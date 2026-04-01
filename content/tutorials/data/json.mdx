@@ -1,0 +1,228 @@
+---
+title: App Inventor 2 JSON数据解析教程
+description: // 接收到JSON字符串 设置 全局变量 JSON文本 = '{"name":"张三","age":18,"score":95.5}'
+---
+
+
+# App Inventor 2 JSON数据解析教程
+
+---
+
+## 一、JSON基础
+
+### 1.1 JSON格式
+
+```json
+// 简单对象
+{"name": "张三", "age": 18, "score": 95.5}
+
+// 数组
+[1, 2, 3, 4, 5]
+
+// 嵌套对象
+{
+  "user": {
+    "name": "张三",
+    "address": {"city": "北京", "zip": "100000"}
+  },
+  "scores": [90, 85, 92]
+}
+```
+
+### 1.2 App Inventor JSON工具
+
+| 方法 | 说明 |
+|------|------|
+| 文本转字典 | JSON字符串 → 字典 |
+| 字典转文本 | 字典 → JSON字符串 |
+| 获取键的值 | 从字典取值 |
+| 设置键的值 | 向字典写值 |
+
+---
+
+## 二、解析简单JSON
+
+```
+// 接收到JSON字符串
+设置 全局变量 JSON文本 = '{"name":"张三","age":18,"score":95.5}'
+
+// 解析
+设置 全局变量 数据 = 调用 JSON.文本转字典(全局变量 JSON文本)
+
+// 取值
+设置 全局变量 姓名 = 获取键的值(全局变量 数据, "name", "")
+设置 全局变量 年龄 = 获取键的值(全局变量 数据, "age", 0)
+设置 全局变量 分数 = 获取键的值(全局变量 数据, "score", 0)
+
+设置 Label_Name.文本 = "姓名: " + 全局变量 姓名
+设置 Label_Age.文本 = "年龄: " + 全局变量 年龄
+设置 Label_Score.文本 = "分数: " + 全局变量 分数
+```
+
+---
+
+## 三、解析JSON数组
+
+```
+// JSON数组
+设置 全局变量 JSON文本 = '[{"id":1,"name":"苹果"},{"id":2,"name":"香蕉"},{"id":3,"name":"橙子"}]'
+
+// 解析为列表
+设置 全局变量 列表 = 调用 JSON.文本转列表(全局变量 JSON文本)
+
+// 遍历
+对于 每个 项目 在 全局变量 列表 中
+  设置 全局变量 ID = 获取键的值(项目, "id", 0)
+  设置 全局变量 名称 = 获取键的值(项目, "name", "")
+  
+  // 添加到ListView
+  添加项目到列表(全局变量 显示列表, 全局变量 ID + ". " + 全局变量 名称)
+循环结束
+
+设置 ListView1.元素 = 全局变量 显示列表
+```
+
+---
+
+## 四、解析嵌套JSON
+
+```
+设置 全局变量 JSON文本 = '{
+  "code": 200,
+  "data": {
+    "user": {
+      "id": 1001,
+      "name": "张三",
+      "avatar": "http://example.com/avatar.jpg"
+    },
+    "scores": [90, 85, 92, 88]
+  }
+}'
+
+// 解析
+设置 全局变量 响应 = 调用 JSON.文本转字典(全局变量 JSON文本)
+
+// 检查状态码
+设置 全局变量 状态码 = 获取键的值(全局变量 响应, "code", 0)
+如果 全局变量 状态码 = 200 则
+  // 获取data层
+  设置 全局变量 数据 = 获取键的值(全局变量 响应, "data", {})
+  
+  // 获取user层
+  设置 全局变量 用户 = 获取键的值(全局变量 数据, "user", {})
+  设置 全局变量 用户名 = 获取键的值(全局变量 用户, "name", "")
+  设置 全局变量 头像URL = 获取键的值(全局变量 用户, "avatar", "")
+  
+  // 获取scores数组
+  设置 全局变量 分数列表 = 获取键的值(全局变量 数据, "scores", [])
+  设置 全局变量 平均分 = 调用 计算平均值(全局变量 分数列表)
+  
+  设置 Label_User.文本 = 全局变量 用户名
+  设置 Image_Avatar.图片 = 全局变量 头像URL
+  设置 Label_Score.文本 = "平均分: " + 全局变量 平均分
+否则
+  调用 Notifier1.显示消息("请求失败: " + 全局变量 状态码)
+如果结束
+```
+
+---
+
+## 五、网络API解析实战
+
+### 5.1 天气API
+
+```
+当 Button_GetWeather.被点击 时
+  调用 Web1.发送文本请求(
+    网址: "https://api.openweathermap.org/data/2.5/weather?q=Beijing&appid=YOUR_KEY&lang=zh_cn"
+  )
+
+当 Web1.收到文本响应(响应文本) 时
+  设置 全局变量 天气数据 = 调用 JSON.文本转字典(响应文本)
+  
+  // 解析天气信息
+  设置 全局变量 天气列表 = 获取键的值(全局变量 天气数据, "weather", [])
+  设置 全局变量 天气 = 获取列表项目(全局变量 天气列表, 1)
+  设置 全局变量 天气描述 = 获取键的值(全局变量 天气, "description", "")
+  
+  // 解析温度
+  设置 全局变量 主数据 = 获取键的值(全局变量 天气数据, "main", {})
+  设置 全局变量 温度 = 获取键的值(全局变量 主数据, "temp", 0) - 273.15
+  设置 全局变量 湿度 = 获取键的值(全局变量 主数据, "humidity", 0)
+  
+  设置 Label_Weather.文本 = 全局变量 天气描述
+  设置 Label_Temp.文本 = 四舍五入(全局变量 温度, 1) + "°C"
+  设置 Label_Humidity.文本 = 全局变量 湿度 + "%"
+```
+
+### 5.2 错误处理
+
+```
+过程 安全解析JSON(JSON文本)
+  如果 JSON文本 = "" 或 JSON文本 = 空 则
+    返回 {}
+  如果结束
+  
+  // 检查是否以{或[开头
+  设置 全局变量 首字符 = 文本取部分(JSON文本, 1, 1)
+  如果 全局变量 首字符 ≠ "{" 且 全局变量 首字符 ≠ "[" 则
+    调用 Notifier1.显示消息("无效的JSON格式")
+    返回 {}
+  如果结束
+  
+  返回 调用 JSON.文本转字典(JSON文本)
+过程结束
+```
+
+---
+
+## 六、构建JSON
+
+```
+// 构建用户数据JSON
+过程 构建用户JSON(姓名, 年龄, 分数列表)
+  设置 全局变量 用户数据 = 创建空字典()
+  调用 设置键的值(全局变量 用户数据, "name", 姓名)
+  调用 设置键的值(全局变量 用户数据, "age", 年龄)
+  调用 设置键的值(全局变量 用户数据, "scores", 分数列表)
+  调用 设置键的值(全局变量 用户数据, "timestamp", 调用 时钟1.获取时间毫秒())
+  
+  返回 调用 JSON.字典转文本(全局变量 用户数据)
+过程结束
+
+// 发送JSON到服务器
+当 Button_Submit.被点击 时
+  设置 全局变量 JSON数据 = 调用 构建用户JSON(
+    TextBox_Name.文本,
+    文本转数字(TextBox_Age.文本),
+    全局变量 分数列表
+  )
+  
+  调用 Web1.设置请求头([["Content-Type", "application/json"]])
+  调用 Web1.发送文本请求(
+    网址: "http://api.example.com/user",
+    方法: "POST",
+    内容: 全局变量 JSON数据
+  )
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

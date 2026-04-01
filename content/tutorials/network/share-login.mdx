@@ -1,0 +1,184 @@
+---
+title: App Inventor 2 分享与第三方登录教程
+description: "覆盖：系统分享、微信分享、QQ登录、Google登录、OAuth"
+---
+
+
+# App Inventor 2 分享与第三方登录教程
+
+> 覆盖：系统分享、微信分享、QQ登录、Google登录、OAuth
+
+---
+
+## 一、系统分享
+
+### 1.1 文本分享
+
+```
+当 按钮_分享文本.被点击 时
+  调用 分享1.分享文本("这是分享的内容", "分享标题")
+```
+
+### 1.2 图片分享
+
+```
+当 按钮_分享图片.被点击 时
+  调用 分享1.分享图片("/sdcard/Pictures/screenshot.png", "分享图片")
+```
+
+### 1.3 文件分享
+
+```
+当 按钮_分享文件.被点击 时
+  调用 分享1.分享文件("/sdcard/Download/report.pdf")
+```
+
+---
+
+## 二、微信分享
+
+### 2.1 分享到微信
+
+需要使用微信SDK扩展
+
+```
+当 按钮_微信分享.被点击 时
+  调用 微信分享1.初始化("你的AppID")
+  调用 微信分享1.分享链接(
+    "https://www.fun123.cn",
+    "App Inventor 2中文网",
+    "一起学编程"
+  )
+
+当 微信分享1.分享成功 时
+  调用 对话框1.显示消息对话框("分享成功", "提示", "确定")
+```
+
+---
+
+## 三、QQ登录
+
+### 3.1 OAuth流程
+
+1. 在腾讯开放平台注册应用
+2. 获取AppID和AppKey
+3. 配置授权回调地址
+
+### 3.2 登录代码
+
+```
+当 按钮_QQ登录.被点击 时
+  调用 QQ登录1.初始化("你的AppID")
+  调用 QQ登录1.登录()
+
+当 QQ登录1.登录成功 时（openID, accessToken, 用户信息）
+  设置 全局变量 QQ用户信息 = 用户信息
+  设置 标签_昵称.文本 = 获取键的值(用户信息, "nickname", "")
+  设置 标签_头像.图片 = 获取键的值(用户信息, "figureurl_qq_2", "")
+  
+当 QQ登录1.登录失败 时（错误信息）
+  调用 对话框1.显示消息对话框("登录失败: " + 错误信息, "错误", "确定")
+```
+
+---
+
+## 四、Google登录
+
+### 4.1 配置
+
+1. 在Google Cloud Console创建OAuth客户端
+2. 获取Client ID
+3. 配置应用包名和签名
+
+### 4.2 登录代码
+
+```
+当 按钮_Google登录.被点击 时
+  调用 Google登录1.初始化("你的ClientID")
+  调用 Google登录1.登录()
+
+当 Google登录1.登录成功 时（ID Token, 用户信息）
+  设置 全局变量 Google用户 = 用户信息
+  设置 标签_邮箱.文本 = 获取键的值(用户信息, "email", "")
+  设置 标签_姓名.文本 = 获取键的值(用户信息, "name", "")
+
+当 Google登录1.登录失败 时（错误）
+  调用 对话框1.显示消息对话框("登录失败", "错误", "确定")
+```
+
+---
+
+## 五、Token处理
+
+### 5.1 保存Token
+
+```
+当 Google登录1.登录成功 时（ID Token, 用户信息）
+  调用 TinyDB1.存储值("google_token", ID Token)
+  调用 TinyDB1.存储值("google_user", 用户信息)
+```
+
+### 5.2 自动登录
+
+```
+当 Screen1.初始化 时
+  初始化局部变量 保存的Token = 获取键的值(调用 TinyDB1.获取值("google_token", ""), "token", "")
+  
+  如果 保存的Token ≠ "" 且 保存的Token ≠ 空文本 则
+    // 验证Token有效性
+    调用 Google登录1.验证Token(保存的Token)
+  否则
+    调用 对话框1.显示消息对话框("请先登录", "提示", "确定")
+```
+
+---
+
+## 六、退出登录
+
+### 6.1 退出
+
+```
+当 按钮_退出.被点击 时
+  调用 TinyDB1.清除标签("google_token")
+  调用 TinyDB1.清除标签("google_user")
+  调用 Google登录1.退出()
+  
+  设置 标签_状态.文本 = "已退出登录"
+```
+
+---
+
+## 七、常见问题
+
+### Q1：第三方登录需要审核？
+
+是的，微信、QQ需要提交应用审核
+
+### Q2：Token过期？
+
+需要刷新Token或重新登录
+
+### Q3：分享到微信失败？
+
+检查是否安装微信
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

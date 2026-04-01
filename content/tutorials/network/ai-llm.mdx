@@ -1,0 +1,308 @@
+---
+title: App Inventor 2 调用阿里云百炼大模型教程
+description: "国内可用、无需科学上网、有免费额度，是 App Inventor 2 接入AI大模型的最佳选择之一。"
+---
+
+
+# App Inventor 2 调用阿里云百炼大模型教程
+
+> 国内可用、无需科学上网、有免费额度，是 App Inventor 2 接入AI大模型的最佳选择之一。
+
+---
+
+## 一、为什么选阿里云百炼？
+
+| 对比项 | 阿里云百炼 | OpenAI ChatGPT |
+|--------|-----------|----------------|
+| 国内访问 | ✅ 直接访问 | ❌ 需要科学上网 |
+| 免费额度 | ✅ 有（qwen-turbo等） | ❌ 需要绑卡 |
+| 中文效果 | ✅ 优秀 | ✅ 优秀 |
+| 接入难度 | ⭐⭐ | ⭐⭐⭐ |
+
+---
+
+## 二、准备工作
+
+### 2.1 获取API Key
+
+1. 访问 [阿里云百炼控制台](https://bailian.console.aliyun.com/)
+2. 注册/登录阿里云账号
+3. 开通百炼服务
+4. 在"API-KEY管理"中创建API Key
+5. 复制保存API Key（格式：`sk-xxxxxxxxxxxxxxxx`）
+
+### 2.2 选择模型
+
+| 模型 | 特点 | 免费额度 |
+|------|------|---------|
+| `qwen-turbo` | 速度快，适合对话 | 有免费额度 |
+| `qwen-plus` | 效果更好 | 有免费额度 |
+| `qwen-max` | 最强效果 | 较少免费额度 |
+| `qwen-long` | 超长上下文 | 有免费额度 |
+
+**新手推荐**：`qwen-turbo`，速度快、免费额度多。
+
+---
+
+## 三、API接口说明
+
+### 3.1 请求地址
+
+```
+POST https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+```
+
+### 3.2 请求头
+
+```
+Authorization: Bearer sk-你的API密钥
+Content-Type: application/json
+```
+
+### 3.3 请求体（JSON格式）
+
+```json
+{
+  "model": "qwen-turbo",
+  "messages": [
+    {"role": "system", "content": "你是一个App Inventor 2编程助手"},
+    {"role": "user", "content": "如何制作倒计时？"}
+  ]
+}
+```
+
+### 3.4 返回结果
+
+```json
+{
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "制作倒计时需要使用计时器组件..."
+      }
+    }
+  ],
+  "usage": {
+    "total_tokens": 150
+  }
+}
+```
+
+---
+
+## 四、最简单的AI对话实现
+
+### 界面设计
+
+- 文本输入框：输入问题
+- 按钮：发送
+- 标签：显示AI回复
+- Web客户端组件（不可见）
+
+### 代码块
+
+```
+初始化全局变量 API_KEY = "sk-你的API密钥"
+初始化全局变量 模型 = "qwen-turbo"
+初始化全局变量 API地址 = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+
+// 发送问题
+当 按钮_发送.被点击 时
+  初始化局部变量 问题 = 文本输入框_问题.文本
+  如果 问题 ≠ "" 则
+    设置 按钮_发送.启用 = 假
+    设置 标签_回复.文本 = "AI思考中..."
+    调用 发送AI请求(问题)
+
+// 发送AI请求过程
+定义 发送AI请求(问题)
+  // 构建请求JSON
+  初始化局部变量 请求JSON = 合并字符串(
+    '{"model":"', 全局变量 模型, '",',
+    '"messages":[',
+    '{"role":"system","content":"你是一个App Inventor 2编程助手，用中文回答"},',
+    '{"role":"user","content":"', 问题, '"}',
+    ']}'
+  )
+  
+  // 设置请求头
+  调用 Web客户端1.设置请求头([
+    ["Authorization", 合并字符串("Bearer ", 全局变量 API_KEY)],
+    ["Content-Type", "application/json"]
+  ])
+  
+  // 发送POST请求
+  设置 Web客户端1.URL = 全局变量 API地址
+  调用 Web客户端1.发送POST文本(请求JSON)
+
+// 收到AI回复
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  设置 按钮_发送.启用 = 真
+  
+  如果 响应码 = 200 则
+    // 解析JSON获取回复内容
+    初始化局部变量 根字典 = 调用 字典.JSON转字典(响应内容)
+    初始化局部变量 choices = 获取键的值(根字典, "choices", [])
+    如果 列表长度(choices) > 0 则
+      初始化局部变量 第一个 = 选择列表项(choices, 1)
+      初始化局部变量 消息 = 获取键的值(第一个, "message", {})
+      初始化局部变量 回复 = 获取键的值(消息, "content", "")
+      设置 标签_回复.文本 = 回复
+  否则
+    设置 标签_回复.文本 = 合并字符串("请求失败：", 响应码, "\n", 响应内容)
+```
+
+---
+
+## 五、进阶：多轮对话（保留上下文）
+
+多轮对话需要把历史消息一起发给AI：
+
+```
+初始化全局变量 对话历史 = []
+
+// 发送多轮对话请求
+定义 发送多轮对话(新问题)
+  // 添加用户消息到历史
+  调用 追加列表项(全局变量 对话历史,
+    创建字典(["role", "user"], ["content", 新问题])
+  )
+  
+  // 构建消息列表JSON
+  初始化局部变量 消息JSON = "["
+  对于 每个 消息 在 全局变量 对话历史 中
+    初始化局部变量 角色 = 获取键的值(消息, "role", "")
+    初始化局部变量 内容 = 获取键的值(消息, "content", "")
+    设置 消息JSON = 合并字符串(
+      消息JSON,
+      '{"role":"', 角色, '","content":"', 内容, '"},'
+    )
+  // 去掉最后一个逗号
+  设置 消息JSON = 合并字符串(
+    截取文本(消息JSON, 1, 文本长度(消息JSON) - 1), "]"
+  )
+  
+  初始化局部变量 请求JSON = 合并字符串(
+    '{"model":"', 全局变量 模型, '",',
+    '"messages":', 消息JSON, '}'
+  )
+  
+  调用 Web客户端1.设置请求头([
+    ["Authorization", 合并字符串("Bearer ", 全局变量 API_KEY)],
+    ["Content-Type", "application/json"]
+  ])
+  设置 Web客户端1.URL = 全局变量 API地址
+  调用 Web客户端1.发送POST文本(请求JSON)
+
+// 收到回复后，把AI回复也加入历史
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    初始化局部变量 根字典 = 调用 字典.JSON转字典(响应内容)
+    初始化局部变量 回复 = 获取键路径的值(根字典, ["choices", 1, "message", "content"], "")
+    
+    // 把AI回复加入历史
+    调用 追加列表项(全局变量 对话历史,
+      创建字典(["role", "assistant"], ["content", 回复])
+    )
+    
+    // 显示回复
+    设置 标签_回复.文本 = 回复
+
+// 清空对话历史
+当 按钮_清空.被点击 时
+  设置 全局变量 对话历史 = []
+  设置 标签_回复.文本 = ""
+  设置 文本输入框_问题.文本 = ""
+```
+
+---
+
+## 六、实战：AI编程助手App
+
+### 6.1 功能设计
+
+- 输入App Inventor 2相关问题
+- AI给出代码块思路和解答
+- 支持多轮追问
+- 一键清空对话
+
+### 6.2 系统提示词（System Prompt）
+
+好的系统提示词能大幅提升AI回答质量：
+
+```
+你是一个专业的App Inventor 2编程助手，专注于帮助用户解决AI2编程问题。
+请用中文回答，回答要简洁清晰，代码块用文字描述（因为用户看不到代码图片）。
+如果涉及代码块，请用"当...时"、"设置...为"等AI2积木块的中文描述方式。
+```
+
+---
+
+## 七、其他国内可用大模型
+
+| 平台 | 模型 | API地址 | 特点 |
+|------|------|---------|------|
+| 阿里百炼 | qwen-turbo/plus/max | dashscope.aliyuncs.com | 中文强，免费额度多 |
+| 智谱AI | glm-4-flash | open.bigmodel.cn | glm-4-flash完全免费 |
+| 月之暗面 | moonshot-v1-8k | api.moonshot.cn | 长上下文 |
+| DeepSeek | deepseek-chat | api.deepseek.com | 推理能力强 |
+
+**接入方式完全相同**，只需修改 `API地址`、`API_KEY`、`模型名称` 三个变量即可。
+
+---
+
+## 八、常见问题
+
+### Q1：返回401错误？
+
+API Key 不正确或未激活，检查：
+- Key格式是否正确（`sk-` 开头）
+- 是否已开通百炼服务
+- Authorization头格式：`Bearer sk-xxx`（注意Bearer后有空格）
+
+### Q2：返回429错误？
+
+请求频率超限，解决方案：
+- 等待几秒后重试
+- 升级账号配额
+
+### Q3：回复内容有乱码？
+
+- 确保请求Content-Type为 `application/json`
+- 问题文本中不要包含特殊字符（如引号）
+
+### Q4：如何让AI回答更准确？
+
+- 在system消息中明确角色和要求
+- 问题描述要具体，附上错误信息或代码描述
+- 使用多轮对话追问细节
+
+---
+
+## 参考资料
+
+- [阿里云百炼官方文档](https://help.aliyun.com/zh/model-studio/)
+- [App Inventor 2 接入ChatGPT教程](https://www.fun123.cn/reference/components/guide/gpt.html)
+- [Web客户端组件文档](https://www.fun123.cn/reference/components/connectivity.html#Web)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

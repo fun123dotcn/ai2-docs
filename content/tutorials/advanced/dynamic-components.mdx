@@ -1,0 +1,263 @@
+---
+title: "App Inventor 2 动态创建布局和组件教程"
+description: "用 DynamicComponents 扩展，在运行时动态生成任意数量的组件，告别\"设计器里摆死组件\"的限制。"
+---
+
+
+# App Inventor 2 动态创建布局和组件教程
+
+> 用 DynamicComponents 扩展，在运行时动态生成任意数量的组件，告别"设计器里摆死组件"的限制。
+
+---
+
+## 一、为什么需要动态创建？
+
+**静态设计的局限**：
+- 商品列表有多少条，就要摆多少个标签/按钮
+- 数据来自网络，数量不确定
+- 需要根据用户操作增删组件
+
+**动态创建的优势**：
+- 运行时按需创建，数量不限
+- 数据驱动UI，自动适配
+- 可以删除、修改已创建的组件
+
+---
+
+## 二、安装扩展
+
+- **扩展名**：DynamicComponents（v2.3.0）
+- **下载地址**：[www.fun123.cn](https://www.fun123.cn/reference/extensions/dynamic_components.html)
+- **作者**：Yusuf Cihan（开源免费）
+
+---
+
+## 三、核心方法速查
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `创建(容器, 组件名, ID)` | 布局/画布, 组件类型, 唯一ID | 创建组件 |
+| `设置属性(ID, 属性名, 值)` | ID, 属性名, 值 | 设置组件属性 |
+| `获取属性(ID, 属性名)` | ID, 属性名 | 读取组件属性 |
+| `删除(ID)` | ID | 删除组件 |
+| `ID是否存在(ID)` | ID | 检查组件是否存在 |
+| `获取组件(ID)` | ID | 获取组件对象 |
+
+---
+
+## 四、入门案例：动态创建按钮
+
+### 界面设计
+
+- 垂直布局1：放置动态按钮的容器
+- 文本输入框：输入按钮文字
+- 按钮：添加新按钮
+- DynamicComponents组件（不可见）
+
+### 代码块
+
+```
+初始化全局变量 按钮计数 = 0
+
+当 按钮_添加.被点击 时
+  设置 全局变量 按钮计数 = 全局变量 按钮计数 + 1
+  初始化局部变量 新ID = 合并字符串("btn_", 全局变量 按钮计数)
+  
+  // 创建按钮
+  调用 DynamicComponents1.创建
+    容器 = 垂直布局1
+    组件名 = "Button"
+    ID = 新ID
+  
+  // 设置属性
+  调用 DynamicComponents1.设置属性(新ID, "Text", 文本输入框1.文本)
+  调用 DynamicComponents1.设置属性(新ID, "Width", -2)      // -2 = 充满
+  调用 DynamicComponents1.设置属性(新ID, "BackgroundColor", 0xFF2196F3)  // 蓝色
+  调用 DynamicComponents1.设置属性(新ID, "TextColor", 0xFFFFFFFF)        // 白色
+
+// 监听动态按钮的点击事件
+当 DynamicComponents1.任意按钮.被点击 时（ID）
+  调用 对话框1.显示消息对话框(
+    合并字符串("点击了按钮：", ID),
+    "提示", "确定")
+```
+
+---
+
+## 五、实战案例：动态商品列表
+
+### 5.1 数据结构
+
+```json
+[
+  {"name": "苹果", "price": 5.5, "stock": 100},
+  {"name": "香蕉", "price": 3.0, "stock": 50},
+  {"name": "橙子", "price": 4.5, "stock": 80}
+]
+```
+
+### 5.2 每条商品的布局结构
+
+```
+水平布局（每条商品）
+├── 图片（商品图）
+├── 垂直布局
+│   ├── 标签（商品名）
+│   └── 标签（价格）
+└── 按钮（加入购物车）
+```
+
+### 5.3 代码块
+
+```
+初始化全局变量 商品列表 = []
+初始化全局变量 商品计数 = 0
+
+// 从网络加载商品数据
+当 Screen1.初始化 时
+  设置 Web客户端1.URL = "https://你的服务器/products.json"
+  调用 Web客户端1.发送GET请求
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    初始化局部变量 根字典 = 调用 字典.JSON转字典(响应内容)
+    设置 全局变量 商品列表 = 获取键的值(根字典, "products", [])
+    调用 渲染商品列表()
+
+// 渲染商品列表
+定义 渲染商品列表()
+  // 先清空容器
+  调用 清空容器(垂直布局_商品列表)
+  设置 全局变量 商品计数 = 0
+  
+  对于 每个 商品 在 全局变量 商品列表 中
+    设置 全局变量 商品计数 = 全局变量 商品计数 + 1
+    初始化局部变量 i = 全局变量 商品计数
+    初始化局部变量 名称 = 获取键的值(商品, "name", "")
+    初始化局部变量 价格 = 获取键的值(商品, "price", 0)
+    
+    // 创建行容器（水平布局）
+    初始化局部变量 行ID = 合并字符串("row_", i)
+    调用 DynamicComponents1.创建("HorizontalArrangement", 垂直布局_商品列表, 行ID)
+    调用 DynamicComponents1.设置属性(行ID, "Width", -2)
+    调用 DynamicComponents1.设置属性(行ID, "BackgroundColor", 0xFFF5F5F5)
+    
+    // 创建商品名标签
+    初始化局部变量 名称ID = 合并字符串("name_", i)
+    调用 DynamicComponents1.创建("Label", 行ID, 名称ID)
+    调用 DynamicComponents1.设置属性(名称ID, "Text", 名称)
+    调用 DynamicComponents1.设置属性(名称ID, "FontSize", 16)
+    调用 DynamicComponents1.设置属性(名称ID, "Width", -2)
+    
+    // 创建价格标签
+    初始化局部变量 价格ID = 合并字符串("price_", i)
+    调用 DynamicComponents1.创建("Label", 行ID, 价格ID)
+    调用 DynamicComponents1.设置属性(价格ID, "Text", 合并字符串("¥", 价格))
+    调用 DynamicComponents1.设置属性(价格ID, "TextColor", 0xFFE53935)
+    
+    // 创建购买按钮
+    初始化局部变量 按钮ID = 合并字符串("buy_", i)
+    调用 DynamicComponents1.创建("Button", 行ID, 按钮ID)
+    调用 DynamicComponents1.设置属性(按钮ID, "Text", "购买")
+    调用 DynamicComponents1.设置属性(按钮ID, "BackgroundColor", 0xFF4CAF50)
+
+// 监听购买按钮点击
+当 DynamicComponents1.任意按钮.被点击 时（ID）
+  如果 以 "buy_" 开头(ID) 则
+    初始化局部变量 序号 = 数字(截取文本(ID, 5, 文本长度(ID)))
+    初始化局部变量 商品 = 选择列表项(全局变量 商品列表, 序号)
+    初始化局部变量 名称 = 获取键的值(商品, "name", "")
+    调用 对话框1.显示消息对话框(
+      合并字符串("已加入购物车：", 名称),
+      "提示", "确定")
+```
+
+---
+
+## 六、动态创建常用组件名称
+
+| 组件 | 组件名（英文） |
+|------|-------------|
+| 标签 | `Label` |
+| 按钮 | `Button` |
+| 文本输入框 | `TextBox` |
+| 图片 | `Image` |
+| 水平布局 | `HorizontalArrangement` |
+| 垂直布局 | `VerticalArrangement` |
+| 水平滚动布局 | `HorizontalScrollArrangement` |
+| 垂直滚动布局 | `VerticalScrollArrangement` |
+| 复选框 | `CheckBox` |
+| 滑动条 | `Slider` |
+| 下拉框 | `Spinner` |
+
+---
+
+## 七、常用属性名称
+
+| 属性 | 属性名（英文） | 值类型 |
+|------|-------------|--------|
+| 文本 | `Text` | 字符串 |
+| 宽度 | `Width` | 数字（-2=充满，-1=自动） |
+| 高度 | `Height` | 数字 |
+| 字体大小 | `FontSize` | 数字 |
+| 文字颜色 | `TextColor` | 颜色（0xAARRGGBB） |
+| 背景颜色 | `BackgroundColor` | 颜色 |
+| 是否可见 | `Visible` | 真/假 |
+| 是否启用 | `Enabled` | 真/假 |
+| 图片路径 | `Picture` | 字符串 |
+
+---
+
+## 八、常见问题
+
+### Q1：创建后组件不显示？
+
+- 确认容器（布局）已存在且可见
+- 检查容器ID是否正确
+- 确认组件名拼写正确（区分大小写）
+
+### Q2：如何清空容器中的所有动态组件？
+
+```
+定义 清空容器(容器)
+  对于 每个 ID 在 DynamicComponents1.已创建ID列表 中
+    调用 DynamicComponents1.删除(ID)
+```
+
+### Q3：如何获取动态组件的当前属性值？
+
+```
+初始化局部变量 当前文本 = 调用 DynamicComponents1.获取属性("btn_1", "Text")
+```
+
+### Q4：动态创建的组件能响应事件吗？
+
+可以，使用 `任意[组件类型].事件名` 监听所有同类动态组件的事件，通过 `ID` 参数区分是哪个组件。
+
+---
+
+## 参考资料
+
+- [DynamicComponents 扩展文档](https://www.fun123.cn/reference/extensions/dynamic_components.html)
+- [动态组件案例视频](https://www.fun123.cn/reference/extensions/dynamic_components.html)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

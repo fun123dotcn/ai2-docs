@@ -1,0 +1,331 @@
+---
+title: App Inventor 2 复制粘贴功能完整教程
+description: "本教程教你实现App Inventor 2中的复制粘贴功能，包括文本复制、剪贴板读取、跨应用数据共享。"
+---
+
+
+# App Inventor 2 复制粘贴功能完整教程
+
+> 本教程教你实现App Inventor 2中的复制粘贴功能，包括文本复制、剪贴板读取、跨应用数据共享。
+
+---
+
+## 一、功能概述
+
+### 1.1 复制粘贴的应用场景
+
+| 场景 | 说明 |
+|------|------|
+| 内容分享 | 将App内容复制到其他应用 |
+| 数据导入 | 从其他应用粘贴数据 |
+| 快捷输入 | 复制常用文本快速粘贴 |
+| 跨应用通信 | 与其他App共享数据 |
+
+### 1.2 技术方案
+
+| 方案 | 难度 | 功能 | 推荐度 |
+|------|------|------|--------|
+| 剪贴板扩展 | ⭐⭐ | 基础功能 | ⭐⭐⭐⭐ |
+| JavaScript接口 | ⭐⭐⭐ | 高级功能 | ⭐⭐⭐ |
+| 扩展组件 | ⭐⭐ | 完整方案 | ⭐⭐⭐⭐⭐ |
+
+---
+
+## 二、基础方案：使用剪贴板扩展
+
+### 2.1 界面设计
+
+| 组件 | 名称 | 属性设置 |
+|------|------|----------|
+| 文本框 | TextBox_Source | 提示: "输入要复制的内容" |
+| 文本框 | TextBox_Target | 提示: "粘贴内容显示在这里" |
+| 按钮 | Button_Copy | 文本: "复制" |
+| 按钮 | Button_Paste | 文本: "粘贴" |
+| 按钮 | Button_Clear | 文本: "清空" |
+| 标签 | Label_Status | 文本: "状态: 就绪" |
+| Clipboard剪贴板扩展 | Clipboard1 | 非可视组件 |
+
+### 2.2 复制功能代码
+
+```
+当 Button_Copy.被点击 时
+  设置 全局变量 要复制的内容 = TextBox_Source.文本
+  
+  如果 全局变量 要复制的内容 = "" 则
+    调用 Notifier1.显示消息("请先输入内容")
+  否则
+    调用 Clipboard1.复制文本(全局变量 要复制的内容)
+    设置 Label_Status.文本 = "状态: 已复制到剪贴板"
+    调用 Notifier1.显示消息("已复制到剪贴板！")
+  如果结束
+```
+
+### 2.3 粘贴功能代码
+
+```
+当 Button_Paste.被点击 时
+  调用 Clipboard1.读取文本()
+
+当 Clipboard1.读取成功(剪贴板内容) 时
+  设置 TextBox_Target.文本 = 剪贴板内容
+  设置 Label_Status.文本 = "状态: 已从剪贴板粘贴"
+  调用 Notifier1.显示消息("已粘贴！")
+
+当 Clipboard1.读取失败(错误信息) 时
+  设置 Label_Status.文本 = "状态: 粘贴失败"
+  调用 Notifier1.显示消息("粘贴失败: " + 错误信息)
+```
+
+---
+
+## 三、进阶方案：使用JavaScript接口
+
+### 3.1 Web查看器方式
+
+当系统剪贴板扩展不可用时，可以使用Web查看器调用JavaScript接口：
+
+```
+当 Screen1.初始化 时
+  设置 Web查看器1.高度 = 0
+  设置 Web查看器1.可见 = 假
+  调用 初始化剪贴板JS()
+
+过程 初始化剪贴板JS
+  调用 Web查看器1.加载HTML("
+    <html><body>
+    <script>
+      function copyText(text) {
+        navigator.clipboard.writeText(text);
+        window.AppInventor.setWebViewString('copy_success');
+      }
+      function getClipboard() {
+        navigator.clipboard.readText().then(text => {
+          window.AppInventor.setWebViewString(text);
+        }).catch(err => {
+          window.AppInventor.setWebViewString('error');
+        });
+      }
+    </script>
+    </body></html>
+  ")
+过程结束
+```
+
+### 3.2 复制文本（JS方式）
+
+```
+当 Button_Copy.被点击 时
+  调用 Web查看器1.加载URL("javascript:copyText('" + TextBox_Source.文本 + "')")
+
+当 Web查看器1.Web视图字符串改变(新文本) 时
+  如果 新文本 = "copy_success" 则
+    设置 Label_Status.文本 = "状态: 复制成功"
+    调用 Notifier1.显示消息("已复制！")
+  如果结束
+```
+
+### 3.3 读取剪贴板（JS方式）
+
+```
+当 Button_Paste.被点击 时
+  调用 Web查看器1.加载URL("javascript:getClipboard()")
+
+当 Web查看器1.Web视图字符串改变(新文本) 时
+  如果 新文本 ≠ "copy_success" 且 新文本 ≠ "" 则
+    如果 新文本 ≠ "error" 则
+      设置 TextBox_Target.文本 = 新文本
+      设置 Label_Status.文本 = "状态: 粘贴成功"
+      调用 Notifier1.显示消息("已粘贴！")
+    否则
+      设置 Label_Status.文本 = "状态: 粘贴失败"
+      调用 Notifier1.显示消息("无法访问剪贴板")
+    如果结束
+  如果结束
+```
+
+---
+
+## 四、实用案例
+
+### 4.1 快捷回复功能
+
+```
+初始化全局变量 快捷回复列表 = [
+  "您好，请问有什么可以帮助您的？",
+  "感谢您的反馈，我们会尽快处理！",
+  "您的订单已收到，稍后发货。",
+  "如有其他问题，请随时联系我们。"
+]
+
+当 Screen1.初始化 时
+  调用 显示快捷回复列表()
+
+过程 显示快捷回复列表
+  对于 每个回复 在 全局变量 快捷回复列表 中
+    // 创建回复按钮
+    设置 全局变量 按钮 = 调用 Button.创建组件(VerticalLayout1, "btn_reply_" + 项目索引)
+    调用 全局变量 按钮.设置属性("文本", 文本取部分(回复, 1, 20) + "...")
+    调用 全局变量 按钮.注册点击事件(快捷回复被点击)
+  循环结束
+过程结束
+
+过程 快捷回复被点击(组件)
+  // 获取对应的回复内容
+  设置 全局变量 索引 = 文本取部分(调用 组件.获取ID(), -1)
+  设置 全局变量 回复内容 = 获取列表项目(全局变量 快捷回复列表, 全局变量 索引)
+  
+  // 复制到剪贴板
+  调用 Clipboard1.复制文本(全局变量 回复内容)
+  调用 Notifier1.显示消息("已复制到剪贴板，可直接粘贴使用！")
+过程结束
+```
+
+### 4.2 分享功能
+
+```
+当 Button_Share.被点击 时
+  设置 全局变量 分享内容 = TextBox_Share.文本
+  
+  如果 全局变量 分享内容 = "" 则
+    调用 Notifier1.显示消息("请输入要分享的内容")
+  否则
+    调用 Clipboard1.复制文本(全局变量 分享内容)
+    调用 Notifier1.显示选择对话框(
+      对话框标题: "分享成功",
+      消息: "内容已复制到剪贴板，\n打开其他应用粘贴即可分享。",
+      按钮1文本: "好的",
+      按钮2文本: "打开微信"
+    )
+  如果结束
+
+当 Notifier1.选择完成(选择) 时
+  如果 选择 = "打开微信" 则
+    调用 打开另一个应用("com.tencent.mm")
+  如果结束
+```
+
+---
+
+## 五、完整代码总结
+
+```
+初始化全局变量 剪贴板内容 = ""
+
+当 Screen1.初始化 时
+  设置 Label_Status.文本 = "状态: 就绪"
+
+当 Button_Copy.被点击 时
+  如果 TextBox_Source.文本 ≠ "" 则
+    调用 Clipboard1.复制文本(TextBox_Source.文本)
+  否则
+    调用 Notifier1.显示消息("请输入内容")
+  如果结束
+
+当 Button_Paste.被点击 时
+  调用 Clipboard1.读取文本()
+
+当 Button_Clear.被点击 时
+  设置 TextBox_Source.文本 = ""
+  设置 TextBox_Target.文本 = ""
+  设置 Label_Status.文本 = "状态: 已清空"
+
+当 Clipboard1.读取成功(内容) 时
+  设置 TextBox_Target.文本 = 内容
+  设置 Label_Status.文本 = "状态: 已粘贴"
+
+当 Clipboard1.复制成功() 时
+  设置 Label_Status.文本 = "状态: 已复制"
+```
+
+---
+
+## 六、常见问题
+
+### 6.1 剪贴板扩展无法使用
+
+**原因**：部分设备权限问题  
+**解决**：
+- 在应用权限设置中开启剪贴板权限
+- 或使用JavaScript方式作为备选
+
+### 6.2 iOS设备无法使用
+
+**原因**：iOS对剪贴板API有限制  
+**解决**：
+- 使用第三方扩展（如TaifunClipboard）
+- 或使用分享功能代替复制
+
+### 6.3 复制长文本失败
+
+**原因**：文本过长超出限制  
+**解决**：
+- 分段复制
+- 使用文件方式传输
+
+---
+
+## 七、扩展功能
+
+### 7.1 复制格式化文本
+
+```
+当 Button_CopyFormatted.被点击 时
+  设置 全局变量 格式化内容 = 
+    "标题: " + TextBox_Title.文本 + "\n" +
+    "内容: " + TextBox_Content.文本 + "\n" +
+    "时间: " + 调用 时钟1.获取日期() + " " + 调用 时钟1.获取时间()
+  
+  调用 Clipboard1.复制文本(全局变量 格式化内容)
+```
+
+### 7.2 复制后自动清空（安全场景）
+
+```
+当 Button_SecureCopy.被点击 时
+  调用 Clipboard1.复制文本(TextBox_Secret.文本)
+  调用 Notifier1.显示消息("内容已复制，请在其他地方粘贴使用。")
+  
+  // 3秒后清空源文本
+  调用 时钟1.开启定时器(间隔: 3000)
+  调用 时钟1.注册计时事件(定时器触发)
+
+当 时钟1.计时 时
+  设置 TextBox_Secret.文本 = ""
+  调用 时钟1.关闭定时器()
+  调用 Notifier1.显示消息("已自动清空，保护隐私安全。")
+```
+
+---
+
+## 八、总结
+
+| 功能 | 方法 | 适用场景 |
+|------|------|---------|
+| 文本复制 | Clipboard1.复制文本() | 通用场景 |
+| 文本粘贴 | Clipboard1.读取文本() | 通用场景 |
+| JS方式 | Web查看器+JavaScript | 扩展功能 |
+| 快捷回复 | 动态组件+复制 | 客服场景 |
+| 分享功能 | 剪贴板+应用跳转 | 社交场景 |
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-29  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

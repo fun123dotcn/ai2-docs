@@ -1,0 +1,211 @@
+---
+title: App Inventor 2 图表教程
+description: 初始化全局变量 数据点 = [10, 25, 18, 42, 35, 60, 48, 72, 55, 80] 初始化全局变量 图表宽度 = 0 初始化全局变量 图表高度 = 0 初始化全局变量 边距 = 40
+---
+
+
+# App Inventor 2 图表教程
+
+---
+
+## 一、方案对比
+
+| 方案 | 难度 | 效果 | 适用场景 |
+|------|------|------|---------|
+| Canvas手绘 | ⭐⭐⭐ | 一般 | 简单折线 |
+| WebViewer+ECharts | ⭐⭐ | 最好 | 专业图表 |
+| Chart扩展 | ⭐ | 好 | 快速实现 |
+
+---
+
+## 二、Canvas手绘折线图
+
+```
+初始化全局变量 数据点 = [10, 25, 18, 42, 35, 60, 48, 72, 55, 80]
+初始化全局变量 图表宽度 = 0
+初始化全局变量 图表高度 = 0
+初始化全局变量 边距 = 40
+
+当 Screen1.初始化 时
+  设置 全局变量 图表宽度 = Canvas1.宽度
+  设置 全局变量 图表高度 = Canvas1.高度
+  调用 绘制折线图()
+
+过程 绘制折线图
+  // 清空画布
+  调用 Canvas1.清空()
+  
+  // 计算数据范围
+  设置 全局变量 最大值 = 最大值列表(全局变量 数据点)
+  设置 全局变量 最小值 = 最小值列表(全局变量 数据点)
+  设置 全局变量 数据范围 = 全局变量 最大值 - 全局变量 最小值
+  
+  // 绘制坐标轴
+  设置 Canvas1.画笔颜色 = 黑色
+  设置 Canvas1.线宽 = 2
+  // X轴
+  调用 Canvas1.画线(全局变量 边距, 全局变量 图表高度 - 全局变量 边距, 全局变量 图表宽度 - 全局变量 边距, 全局变量 图表高度 - 全局变量 边距)
+  // Y轴
+  调用 Canvas1.画线(全局变量 边距, 全局变量 边距, 全局变量 边距, 全局变量 图表高度 - 全局变量 边距)
+  
+  // 绘制折线
+  设置 Canvas1.画笔颜色 = 蓝色
+  设置 Canvas1.线宽 = 2
+  
+  设置 全局变量 点数 = 获取列表长度(全局变量 数据点)
+  设置 全局变量 X步长 = (全局变量 图表宽度 - 2 * 全局变量 边距) / (全局变量 点数 - 1)
+  设置 全局变量 Y范围 = 全局变量 图表高度 - 2 * 全局变量 边距
+  
+  设置 全局变量 上一X = 0
+  设置 全局变量 上一Y = 0
+  
+  对于 i 从 1 到 全局变量 点数
+    设置 全局变量 值 = 获取列表项目(全局变量 数据点, i)
+    设置 全局变量 X = 全局变量 边距 + (i - 1) * 全局变量 X步长
+    设置 全局变量 Y = 全局变量 图表高度 - 全局变量 边距 - (全局变量 值 - 全局变量 最小值) * 全局变量 Y范围 / 全局变量 数据范围
+    
+    // 画数据点
+    调用 Canvas1.画圆(全局变量 X, 全局变量 Y, 5, 真)
+    
+    // 画连线
+    如果 i > 1 则
+      调用 Canvas1.画线(全局变量 上一X, 全局变量 上一Y, 全局变量 X, 全局变量 Y)
+    如果结束
+    
+    设置 全局变量 上一X = 全局变量 X
+    设置 全局变量 上一Y = 全局变量 Y
+  循环结束
+过程结束
+```
+
+---
+
+## 三、WebViewer + ECharts（推荐）
+
+### 3.1 HTML模板
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  body { margin: 0; padding: 0; }
+  #chart { width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<div id="chart"></div>
+<script>
+var chart = echarts.init(document.getElementById('chart'));
+
+var option = {
+  title: { text: '实时数据' },
+  tooltip: { trigger: 'axis' },
+  xAxis: { type: 'category', data: [] },
+  yAxis: { type: 'value' },
+  series: [{
+    name: '数据',
+    type: 'line',
+    smooth: true,
+    data: [],
+    areaStyle: {}
+  }]
+};
+
+chart.setOption(option);
+
+// 接收App Inventor数据
+function updateChart(labels, values) {
+  chart.setOption({
+    xAxis: { data: labels },
+    series: [{ data: values }]
+  });
+}
+
+// 通知App Inventor图表已就绪
+window.onload = function() {
+  AppInventor.setWebViewString('ready');
+};
+</script>
+</body>
+</html>
+```
+
+### 3.2 App Inventor代码
+
+```
+初始化全局变量 图表就绪 = 假
+初始化全局变量 数据标签 = ["1月","2月","3月","4月","5月","6月"]
+初始化全局变量 数据值 = [120, 200, 150, 80, 70, 110]
+
+当 Screen1.初始化 时
+  设置 WebViewer1.HomeUrl = "file:///android_asset/chart.html"
+
+当 WebViewer1.WebViewStringChange(新值) 时
+  如果 新值 = "ready" 则
+    设置 全局变量 图表就绪 = 真
+    调用 更新图表()
+  如果结束
+
+过程 更新图表
+  如果 全局变量 图表就绪 = 真 则
+    设置 全局变量 标签JSON = 调用 列表转JSON(全局变量 数据标签)
+    设置 全局变量 值JSON = 调用 列表转JSON(全局变量 数据值)
+    
+    调用 WebViewer1.EvaluateJavaScript(
+      "updateChart(" + 全局变量 标签JSON + ", " + 全局变量 值JSON + ")"
+    )
+  如果结束
+过程结束
+
+当 Button_AddData.被点击 时
+  // 添加新数据点
+  添加项目到列表(全局变量 数据标签, "新数据")
+  添加项目到列表(全局变量 数据值, 随机整数(50, 200))
+  调用 更新图表()
+```
+
+---
+
+## 四、实时数据图表
+
+```
+初始化全局变量 实时数据 = []
+初始化全局变量 最大显示点数 = 30
+
+当 时钟1.计时 时
+  // 模拟传感器数据
+  设置 全局变量 新值 = 随机整数(0, 100)
+  添加项目到列表(全局变量 实时数据, 全局变量 新值)
+  
+  // 限制数据点数量
+  如果 获取列表长度(全局变量 实时数据) > 全局变量 最大显示点数 则
+    设置 全局变量 实时数据 = 获取列表子集(全局变量 实时数据, 2, 全局变量 最大显示点数 + 1)
+  如果结束
+  
+  调用 更新图表()
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

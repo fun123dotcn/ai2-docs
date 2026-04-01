@@ -1,0 +1,182 @@
+---
+title: App Inventor 2 远程音频教程
+description: 当 Screen1.初始化 时 设置 Player1.Source = "http://example.com/music.mp3"
+---
+
+
+# App Inventor 2 远程音频教程
+
+---
+
+## 一、音频组件对比
+
+| 组件 | 支持格式 | 网络音频 | 流媒体 |
+|------|---------|---------|--------|
+| Sound | MP3/WAV | ❌ | ❌ |
+| Player | MP3/WAV/OGG | ✅ | ✅ |
+| SoundRecorder | 录音 | - | - |
+| TextToSpeech | TTS | - | - |
+
+---
+
+## 二、播放网络音频
+
+```
+当 Screen1.初始化 时
+  设置 Player1.Source = "http://example.com/music.mp3"
+
+当 Button_Play.被点击 时
+  调用 Player1.开始播放()
+
+当 Button_Pause.被点击 时
+  调用 Player1.暂停()
+
+当 Button_Stop.被点击 时
+  调用 Player1.停止()
+
+当 Player1.播放完成() 时
+  调用 Notifier1.显示消息("播放完成")
+
+当 Player1.播放出错(错误信息) 时
+  调用 Notifier1.显示消息("播放失败: " + 错误信息)
+```
+
+---
+
+## 三、播放进度控制
+
+```
+初始化全局变量 总时长 = 0
+
+当 Screen1.初始化 时
+  调用 时钟1.开启定时器(间隔: 500)
+
+当 时钟1.计时 时
+  如果 Player1.正在播放 = 真 则
+    设置 全局变量 当前位置 = Player1.当前位置
+    设置 全局变量 总时长 = Player1.总时长
+    
+    // 更新进度条
+    如果 全局变量 总时长 > 0 则
+      设置 Slider1.值 = 全局变量 当前位置 * 100 / 全局变量 总时长
+    如果结束
+    
+    // 显示时间
+    设置 Label_Time.文本 = 
+      调用 毫秒转时间(全局变量 当前位置) + " / " + 
+      调用 毫秒转时间(全局变量 总时长)
+  如果结束
+
+过程 毫秒转时间(毫秒)
+  设置 全局变量 秒 = 向下取整(毫秒 / 1000)
+  设置 全局变量 分 = 向下取整(全局变量 秒 / 60)
+  设置 全局变量 秒 = 全局变量 秒 mod 60
+  返回 补零(全局变量 分) + ":" + 补零(全局变量 秒)
+过程结束
+
+当 Slider1.位置改变 时
+  // 拖动进度条跳转
+  设置 全局变量 目标位置 = 向下取整(Slider1.值 * 全局变量 总时长 / 100)
+  调用 Player1.跳转到(全局变量 目标位置)
+```
+
+---
+
+## 四、TTS语音合成
+
+```
+当 Button_Speak.被点击 时
+  设置 TextToSpeech1.语言 = "zh-CN"
+  设置 TextToSpeech1.语速 = 1.0
+  设置 TextToSpeech1.音调 = 1.0
+  调用 TextToSpeech1.朗读(TextBox_Text.文本)
+
+当 TextToSpeech1.朗读完成() 时
+  调用 Notifier1.显示消息("朗读完成")
+```
+
+---
+
+## 五、录音并上传
+
+```
+初始化全局变量 录音文件路径 = ""
+
+当 Button_Record.被点击 时
+  调用 SoundRecorder1.开始录音()
+  设置 Button_Record.文本 = "停止录音"
+
+当 Button_Record.被点击 时
+  如果 Button_Record.文本 = "停止录音" 则
+    调用 SoundRecorder1.停止录音()
+    设置 Button_Record.文本 = "开始录音"
+  如果结束
+
+当 SoundRecorder1.录音完成(录音文件) 时
+  设置 全局变量 录音文件路径 = 录音文件
+  调用 Notifier1.显示消息("录音完成: " + 录音文件)
+  
+  // 上传到服务器
+  调用 Web1.发送文件请求(
+    网址: "http://server.com/upload_audio.php",
+    文件路径: 全局变量 录音文件路径
+  )
+```
+
+---
+
+## 六、播放列表
+
+```
+初始化全局变量 播放列表 = [
+  "http://example.com/song1.mp3",
+  "http://example.com/song2.mp3",
+  "http://example.com/song3.mp3"
+]
+初始化全局变量 当前索引 = 1
+
+过程 播放当前歌曲
+  设置 Player1.Source = 获取列表项目(全局变量 播放列表, 全局变量 当前索引)
+  调用 Player1.开始播放()
+
+当 Button_Next.被点击 时
+  如果 全局变量 当前索引 < 获取列表长度(全局变量 播放列表) 则
+    设置 全局变量 当前索引 = 全局变量 当前索引 + 1
+  否则
+    设置 全局变量 当前索引 = 1
+  如果结束
+  调用 播放当前歌曲()
+
+当 Button_Prev.被点击 时
+  如果 全局变量 当前索引 > 1 则
+    设置 全局变量 当前索引 = 全局变量 当前索引 - 1
+  否则
+    设置 全局变量 当前索引 = 获取列表长度(全局变量 播放列表)
+  如果结束
+  调用 播放当前歌曲()
+
+当 Player1.播放完成() 时
+  // 自动播放下一首
+  调用 Button_Next.被点击()
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

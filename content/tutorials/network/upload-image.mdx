@@ -1,0 +1,327 @@
+---
+title: App Inventor 2 上传图片/文件到服务器完整教程
+description: "本文覆盖三种上传方案，从最简单的图床到自建服务器，按需选择。"
+---
+
+
+# App Inventor 2 上传图片/文件到服务器完整教程
+
+> 本文覆盖三种上传方案，从最简单的图床到自建服务器，按需选择。
+
+---
+
+## 一、方案对比
+
+| 方案 | 难度 | 需要服务器 | 适用场景 |
+|------|------|-----------|---------|
+| **方案A：ImgBB图床** | ⭐ 最简单 | ❌ 不需要 | 只需存图片，有免费额度 |
+| **方案B：Base64编码上传** | ⭐⭐ | ✅ 需要 | 图片+文字一起POST |
+| **方案C：二进制文件上传** | ⭐⭐⭐ | ✅ 需要 | 任意文件，效率最高 |
+
+---
+
+## 二、方案A：ImgBB图床（最简单，推荐新手）
+
+### 2.1 准备工作
+
+1. 注册 [ImgBB](https://imgbb.com/) 账号
+2. 获取 API Key：登录后访问 `https://api.imgbb.com/`
+3. 安装 ImgBBHost 扩展（来自 Kodular 社区，免费）
+
+### 2.2 代码块
+
+```
+初始化全局变量 IMGBB_KEY = "你的ImgBB API Key"
+
+// 拍照后上传
+当 按钮_拍照.被点击 时
+  调用 摄像头1.拍照
+
+当 摄像头1.拍照完成 时（图片路径）
+  设置 图片1.图片 = 图片路径
+  // 上传到ImgBB
+  调用 ImgBBHost1.上传图片
+    API密钥 = 全局变量 IMGBB_KEY
+    图片路径 = 图片路径
+
+当 ImgBBHost1.上传成功 时（图片URL）
+  设置 标签_URL.文本 = 图片URL
+  调用 对话框1.显示消息对话框("上传成功！\n" + 图片URL, "提示", "确定")
+
+当 ImgBBHost1.上传失败 时（错误信息）
+  调用 对话框1.显示消息对话框("上传失败：" + 错误信息, "错误", "确定")
+```
+
+---
+
+## 三、方案B：Base64编码上传
+
+### 3.1 原理
+
+图片 → Base64字符串 → POST到服务器 → 服务器解码保存
+
+**优点**：可以和其他文本数据一起POST（如用户名、描述等）
+**缺点**：Base64编码后体积增大约33%
+
+### 3.2 App端代码块
+
+```
+初始化全局变量 服务器地址 = "https://你的服务器/upload.php"
+初始化全局变量 图片Base64 = ""
+
+// 从相册选图
+当 按钮_选图.被点击 时
+  调用 图片选择器1.打开
+
+当 图片选择器1.选择完成 时（选择项）
+  设置 图片1.图片 = 选择项
+  // 读取图片为Base64
+  调用 文件工具1.读取文件为Base64(选择项)
+
+当 文件工具1.读取完成 时（Base64文本）
+  设置 全局变量 图片Base64 = Base64文本
+
+// 上传
+当 按钮_上传.被点击 时
+  如果 全局变量 图片Base64 ≠ "" 则
+    设置 Web客户端1.URL = 全局变量 服务器地址
+    // 构建POST数据
+    调用 Web客户端1.构建请求数据
+      名称 = ["image", "username", "desc"]
+      值 = [全局变量 图片Base64, 文本输入框_用户名.文本, 文本输入框_描述.文本]
+    调用 Web客户端1.发送POST请求
+  否则
+    调用 对话框1.显示消息对话框("请先选择图片", "提示", "确定")
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    调用 对话框1.显示消息对话框("上传成功！", "提示", "确定")
+  否则
+    调用 对话框1.显示消息对话框("上传失败：" + 响应码, "错误", "确定")
+```
+
+### 3.3 PHP服务端代码
+
+```php
+<?php
+// upload_base64.php
+$image_base64 = $_POST['image'];
+$username = $_POST['username'];
+$desc = $_POST['desc'];
+
+// Base64解码
+$image_data = base64_decode($image_base64);
+
+// 生成文件名
+$filename = 'uploads/' . $username . '_' . time() . '.jpg';
+
+// 保存文件
+if (file_put_contents($filename, $image_data)) {
+    echo json_encode(["code" => 200, "url" => $filename]);
+} else {
+    echo json_encode(["code" => 500, "msg" => "保存失败"]);
+}
+?>
+```
+
+---
+
+## 四、方案C：二进制文件上传（效率最高）
+
+### 4.1 原理
+
+直接将文件二进制流POST到服务器，无需Base64转换，效率最高，支持任意文件类型。
+
+### 4.2 App端代码块
+
+```
+初始化全局变量 服务器地址 = "https://你的服务器/PicXfer.php"
+初始化全局变量 图片路径 = ""
+
+// 拍照
+当 按钮_拍照.被点击 时
+  调用 摄像头1.拍照
+
+当 摄像头1.拍照完成 时（图片路径）
+  设置 全局变量 图片路径 = 图片路径
+  设置 图片1.图片 = 图片路径
+
+// 上传（二进制POST）
+当 按钮_上传.被点击 时
+  如果 全局变量 图片路径 ≠ "" 则
+    // 获取文件名
+    初始化局部变量 文件名 = 调用 文件工具1.获取文件名(全局变量 图片路径)
+    
+    // 设置URL（文件名作为参数）
+    设置 Web客户端1.URL = 合并字符串(
+      全局变量 服务器地址, "?pic=", 文件名
+    )
+    
+    // 直接POST文件（二进制）
+    调用 Web客户端1.发送POST文件(全局变量 图片路径)
+  否则
+    调用 对话框1.显示消息对话框("请先拍照", "提示", "确定")
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    调用 对话框1.显示消息对话框("上传成功！\n" + 响应内容, "提示", "确定")
+  否则
+    调用 对话框1.显示消息对话框("上传失败：" + 响应码, "错误", "确定")
+```
+
+### 4.3 PHP服务端代码
+
+```php
+<?php
+// PicXfer.php - 接收二进制文件
+$picDir = "./uploads/";
+$fileName = $_REQUEST['pic'];
+
+// 读取二进制流
+$dataToWrite = file_get_contents('php://input');
+
+// 保存文件
+$fileStatus = file_put_contents($picDir . $fileName, $dataToWrite);
+
+if ($fileStatus !== false) {
+    echo json_encode(["code" => 200, "bytes" => $fileStatus]);
+} else {
+    echo json_encode(["code" => 500, "msg" => "写入失败"]);
+}
+?>
+```
+
+### 4.4 Python（Flask）服务端代码
+
+```python
+from flask import Flask, request
+from flask_restful import Api, Resource
+
+app = Flask(__name__)
+api = Api(app)
+
+class UploadImage(Resource):
+    def post(self):
+        # 接收二进制流保存为图片
+        img_data = request.get_data()
+        filename = request.args.get('pic', 'upload.jpg')
+        
+        with open(f"uploads/{filename}", "wb") as f:
+            f.write(img_data)
+        
+        return {"code": 200, "filename": filename}
+
+api.add_resource(UploadImage, '/upload')
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=8081, debug=True)
+```
+
+---
+
+## 五、完整案例：拍照上传+显示历史图片
+
+### 5.1 功能设计
+
+- 拍照 → 上传到服务器
+- 从服务器获取图片列表
+- 在App中显示历史图片
+
+### 5.2 代码块
+
+```
+初始化全局变量 服务器 = "https://你的服务器"
+初始化全局变量 当前图片路径 = ""
+
+// 拍照
+当 按钮_拍照.被点击 时
+  调用 摄像头1.拍照
+
+当 摄像头1.拍照完成 时（图片路径）
+  设置 全局变量 当前图片路径 = 图片路径
+  设置 图片_预览.图片 = 图片路径
+  设置 按钮_上传.启用 = 真
+
+// 上传
+当 按钮_上传.被点击 时
+  设置 按钮_上传.文本 = "上传中..."
+  设置 按钮_上传.启用 = 假
+  
+  初始化局部变量 文件名 = 合并字符串(
+    "photo_", 调用 计时器1.格式化日期时间(调用 计时器1.现在, "yyyyMMdd_HHmmss"), ".jpg"
+  )
+  设置 Web客户端1.URL = 合并字符串(全局变量 服务器, "/upload.php?pic=", 文件名)
+  调用 Web客户端1.发送POST文件(全局变量 当前图片路径)
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  设置 按钮_上传.文本 = "上传"
+  设置 按钮_上传.启用 = 真
+  
+  如果 响应码 = 200 则
+    调用 对话框1.显示消息对话框("✅ 上传成功！", "提示", "确定")
+    // 刷新图片列表
+    调用 加载图片列表()
+  否则
+    调用 对话框1.显示消息对话框("❌ 上传失败：" + 响应码, "错误", "确定")
+
+// 加载图片列表
+定义 加载图片列表()
+  设置 Web客户端1.URL = 合并字符串(全局变量 服务器, "/list.php")
+  调用 Web客户端1.发送GET请求
+```
+
+---
+
+## 六、常见问题
+
+### Q1：上传后服务器没有收到文件？
+
+- 检查服务器URL是否正确（http/https）
+- 检查服务器目录是否有写入权限（`chmod 777 uploads/`）
+- 检查PHP是否开启了文件上传（`file_uploads = On`）
+
+### Q2：大图片上传超时？
+
+- 压缩图片后再上传（使用图片处理扩展）
+- 增加服务器超时时间（`max_execution_time`）
+- 分片上传（高级方案）
+
+### Q3：上传成功但图片打不开？
+
+- Base64方案：检查解码是否正确，注意去掉 `data:image/jpeg;base64,` 前缀
+- 二进制方案：检查文件扩展名是否正确
+
+### Q4：没有服务器怎么办？
+
+- 使用 **ImgBB图床**（方案A，免费）
+- 使用 **阿里云OSS** 或 **腾讯云COS**（有免费额度）
+- 使用 **网络微数据库** 存Base64（小图片可用）
+
+---
+
+## 参考资料
+
+- [App Inventor 2 上传文件到服务器全方案](https://www.fun123.cn/reference/pro/file_upload.html)
+- [Web客户端组件文档](https://www.fun123.cn/reference/components/connectivity.html#Web)
+- [ImgBBHost扩展（Kodular社区）](https://community.kodular.io/t/free-imgbbhost-upload-images-to-imgbb/315864)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

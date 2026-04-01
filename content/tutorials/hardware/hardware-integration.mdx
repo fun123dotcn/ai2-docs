@@ -1,0 +1,266 @@
+---
+title: App Inventor 2 硬件集成教程
+description: // OneNet API配置 初始化全局变量 OneNet_API_Key = "your_api_key" 初始化全局变量 设备ID = "your_device_id" 初始化全局变量 产品ID = "your_product_id"
+---
+
+
+# App Inventor 2 硬件集成教程
+
+---
+
+## 一、EV3超声波传感器
+
+```
+// 使用EV3扩展连接乐高机器人
+当 Screen1.初始化 时
+  调用 EV3Extension1.连接蓝牙()
+
+当 EV3Extension1.连接成功() 时
+  调用 Notifier1.显示消息("EV3已连接")
+
+// 读取超声波传感器
+过程 读取超声波传感器
+  // EV3超声波传感器连接端口1
+  设置 全局变量 距离值 = 调用 EV3Extension1.读取传感器(
+    端口: 1,
+    类型: "ultrasonic"
+  )
+  返回 全局变量 距离值
+过程结束
+
+// 定时读取并显示
+当 时钟1.计时 时
+  设置 全局变量 距离 = 调用 读取超声波传感器()
+  设置 Label_Distance.文本 = "距离: " + 全局变量 距离 + " cm"
+  
+  // 根据距离控制机器人
+  如果 全局变量 距离 < 20 则
+    调用 EV3Extension1.设置电机速度(端口: "B", 速度: 0)
+    调用 EV3Extension1.设置电机速度(端口: "C", 速度: 0)
+  否则
+    调用 EV3Extension1.设置电机速度(端口: "B", 速度: 50)
+    调用 EV3Extension1.设置电机速度(端口: "C", 速度: 50)
+  如果结束
+
+// 避障程序
+过程 避障行驶
+  设置 全局变量 前方距离 = 调用 读取超声波传感器()
+  
+  如果 全局变量 前方距离 < 15 则
+    // 后退并转向
+    调用 EV3Extension1.设置电机速度(端口: "B", 速度: -30)
+    调用 EV3Extension1.设置电机速度(端口: "C", 速度: -30)
+    调用 等待(毫秒: 500)
+    调用 EV3Extension1.设置电机速度(端口: "B", 速度: 30)
+    调用 EV3Extension1.设置电机速度(端口: "C", 速度: -30)
+    调用 等待(毫秒: 300)
+  否则
+    // 前进
+    调用 EV3Extension1.设置电机速度(端口: "B", 速度: 50)
+    调用 EV3Extension1.设置电机速度(端口: "C", 速度: 50)
+  如果结束
+过程结束
+```
+
+---
+
+## 二、OneNet物联网平台集成
+
+```
+// OneNet API配置
+初始化全局变量 OneNet_API_Key = "your_api_key"
+初始化全局变量 设备ID = "your_device_id"
+初始化全局变量 产品ID = "your_product_id"
+
+// 获取设备数据
+过程 获取OneNet数据(数据流ID)
+  调用 Web1.设置请求头([
+    ["api-key", 全局变量 OneNet_API_Key]
+  ])
+  调用 Web1.发送文本请求(
+    网址: "https://api.heclouds.com/devices/" + 全局变量 设备ID + 
+          "/datapoints?datastream_id=" + 数据流ID
+  )
+
+当 Web1.收到文本响应(响应文本) 时
+  设置 全局变量 响应 = 调用 JSON.文本转字典(响应文本)
+  设置 全局变量 数据点列表 = 获取键的值(
+    获取键的值(获取键的值(全局变量 响应, "data", {}), "datastreams", [{}])[1], 
+    "datapoints", []
+  )
+  
+  如果 获取列表长度(全局变量 数据点列表) > 0 则
+    设置 全局变量 最新数据 = 获取列表项目(全局变量 数据点列表, 1)
+    设置 全局变量 值 = 获取键的值(全局变量 最新数据, "value", "")
+    设置 Label_Data.文本 = 全局变量 值
+  如果结束
+
+// 发送数据到OneNet
+过程 发送数据到OneNet(数据流ID, 值)
+  调用 Web1.设置请求头([
+    ["api-key", 全局变量 OneNet_API_Key],
+    ["Content-Type", "application/json"]
+  ])
+  
+  调用 Web1.发送文本请求(
+    网址: "https://api.heclouds.com/devices/" + 全局变量 设备ID + "/datapoints",
+    方法: "POST",
+    内容: 调用 JSON.字典转文本({
+      "datastreams": [{
+        "id": 数据流ID,
+        "datapoints": [{"value": 值}]
+      }]
+    })
+  )
+
+// 命令下发
+过程 发送命令(命令内容)
+  调用 Web1.设置请求头([
+    ["api-key", 全局变量 OneNet_API_Key],
+    ["Content-Type", "application/json"]
+  ])
+  
+  调用 Web1.发送文本请求(
+    网址: "https://api.heclouds.com/cmds?device_id=" + 全局变量 设备ID,
+    方法: "POST",
+    内容: 命令内容
+  )
+过程结束
+```
+
+---
+
+## 三、中文语音合成扩展
+
+```
+// 使用中文TTS扩展
+当 Screen1.初始化 时
+  调用 ChineseTTS1.初始化()
+  调用 ChineseTTS1.设置语速(速度: 1.0)
+  调用 ChineseTTS1.设置音调(音调: 1.0)
+  调用 ChineseTTS1.设置音量(音量: 1.0)
+
+当 Button_Speak.被点击 时
+  调用 ChineseTTS1.朗读(TextBox1.文本)
+
+当 ChineseTTS1.朗读完成() 时
+  调用 Notifier1.显示消息("朗读完成")
+
+// 不同语音引擎
+// 百度TTS
+过程 百度语音合成(文本)
+  设置 全局变量 Token = 调用 获取百度Token()
+  调用 Web1.发送文本请求(
+    网址: "https://tsn.baidu.com/text2audio?tex=" + 调用 Web1.UriEncode(文本) + 
+          "&tok=" + 全局变量 Token + "&cuid=appinventor&ctp=1&lan=zh",
+    方法: "GET"
+  )
+
+当 Web1.收到文件响应(音频文件路径) 时
+  设置 Player1.Source = 音频文件路径
+  调用 Player1.Start()
+```
+
+---
+
+## 四、动画GIF播放
+
+```
+// 使用KIO4_AnimatedGif扩展
+当 Screen1.初始化 时
+  调用 AnimatedGif1.加载GIF(
+    文件路径: "animation.gif"
+  )
+  调用 AnimatedGif1.开始播放()
+
+当 Button_Pause.被点击 时
+  调用 AnimatedGif1.暂停()
+
+当 Button_Resume.被点击 时
+  调用 AnimatedGif1.继续()
+
+当 Button_Stop.被点击 时
+  调用 AnimatedGif1.停止()
+
+// 网络GIF
+过程 加载网络GIF(URL)
+  调用 AnimatedGif1.加载网络GIF(
+    URL: URL
+  )
+
+当 AnimatedGif1.加载完成() 时
+  调用 Notifier1.显示消息("GIF加载完成")
+  调用 AnimatedGif1.开始播放()
+
+// GIF信息
+过程 获取GIF信息
+  设置 全局变量 宽度 = AnimatedGif1.宽度
+  设置 全局变量 高度 = AnimatedGif1.高度
+  设置 全局变量 帧数 = AnimatedGif1.帧数
+  设置 全局变量 时长 = AnimatedGif1.总时长
+  
+  设置 Label_Info.文本 = "尺寸: " + 宽度 + "x" + 高度 + 
+                         " 帧数: " + 帧数 + 
+                         " 时长: " + 时长 + "ms"
+过程结束
+```
+
+---
+
+## 五、Android屏幕适配
+
+```
+// 参考：OctoStudio适配方案
+初始化全局变量 设计宽度 = 360  // 设计稿宽度（dp）
+初始化全局变量 设计高度 = 640  // 设计稿高度（dp）
+
+当 Screen1.初始化 时
+  设置 全局变量 屏幕宽度 = Screen1.宽度
+  设置 全局变量 屏幕高度 = Screen1.高度
+  设置 全局变量 屏幕密度 = 调用 PhoneStatus1.ScreenDensity()
+  
+  // 计算缩放比例
+  设置 全局变量 缩放比例 = 全局变量 屏幕宽度 / (全局变量 设计宽度 * 全局变量 屏幕密度)
+  
+  调用 适配所有组件()
+
+过程 适配组件(组件, 设计宽, 设计高, 设计字体大小)
+  调用 组件.设置属性("宽度", 向下取整(设计宽 * 全局变量 缩放比例))
+  调用 组件.设置属性("高度", 向下取整(设计高 * 全局变量 缩放比例))
+  如果 设计字体大小 > 0 则
+    调用 组件.设置属性("字体大小", 向下取整(设计字体大小 * 全局变量 缩放比例))
+  如果结束
+过程结束
+
+// 字体适配
+过程 适配字体(组件, 设计字体大小)
+  调用 组件.设置属性("字体大小", 向下取整(设计字体大小 * 全局变量 缩放比例))
+过程结束
+
+// 图片适配
+过程 适配图片(组件, 设计宽, 设计高)
+  调用 组件.设置属性("宽度", 向下取整(设计宽 * 全局变量 缩放比例))
+  调用 组件.设置属性("高度", 向下取整(设计高 * 全局变量 缩放比例))
+过程结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

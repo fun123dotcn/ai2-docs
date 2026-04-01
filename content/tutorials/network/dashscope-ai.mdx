@@ -1,0 +1,419 @@
+---
+title: App Inventor 2 调用阿里云百炼大模型
+description: "本教程教你如何在App Inventor 2中接入阿里云百炼大模型，实现AI对话功能。"
+---
+
+
+# App Inventor 2 调用阿里云百炼大模型
+
+> 本教程教你如何在App Inventor 2中接入阿里云百炼大模型，实现AI对话功能。
+
+---
+
+## 一、阿里云百炼简介
+
+### 1.1 什么是百炼
+
+**阿里云百炼**是一站式大模型服务平台，提供通义千问等大模型的API接口。
+
+### 1.2 主要特点
+
+| 特点 | 说明 |
+|------|------|
+| 模型丰富 | 通义千问、文本嵌入、图像生成等 |
+| 稳定可靠 | 企业级SLA保障 |
+| 易于集成 | RESTful API，简单易用 |
+| 免费额度 | 新用户有免费Token额度 |
+
+---
+
+## 二、准备工作
+
+### 2.1 获取API密钥
+
+1. 访问 [阿里云百炼平台](https://bailian.console.aliyun.com/)
+2. 注册/登录阿里云账号
+3. 开通百炼服务
+4. 创建API Key（保存好Secret Key）
+
+### 2.2 需要的组件
+
+| 组件 | 名称 | 说明 |
+|------|------|------|
+| Web客户端 | Web1 | 发送HTTP请求 |
+| 对话框 | Notifier1 | 显示提示 |
+| 文本框 | TextBox_Input | 用户输入 |
+| 标签 | Label_Response | AI回复显示 |
+| 时钟 | Clock1 | 计时器（可选） |
+
+---
+
+## 三、API配置
+
+### 3.1 百炼API地址
+
+```
+基础地址: https://dashscope.aliyuncs.com/api/v1
+
+对话接口: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation
+嵌入接口: https://dashscope.aliyuncs.com/api/v1/services/aigc/text-embedding/embedding
+```
+
+### 3.2 请求头配置
+
+```
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+X-DashScope-Async: enable  # 可选，启用异步模式
+```
+
+---
+
+## 四、代码实现
+
+### 4.1 初始化设置
+
+```
+初始化全局变量 API密钥 = "sk-xxxxxxxxxxxxxxxx"  // 替换为你的API Key
+初始化全局变量 API地址 = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+初始化全局变量 对话历史 = 创建空列表()
+```
+
+### 4.2 发送对话请求
+
+```
+当 Button_Send.被点击 时
+  设置 全局变量 用户输入 = TextBox_Input.文本
+  
+  如果 全局变量 用户输入 = "" 则
+    调用 Notifier1.显示消息("请输入内容")
+  否则
+    设置 Label_Response.文本 = "正在思考中..."
+    设置 Button_Send.启用 = 假
+    
+    // 添加用户消息到历史
+    调用 添加消息到历史("user", 全局变量 用户输入)
+    
+    // 发送请求
+    调用 发送AI请求()
+  如果结束
+
+过程 发送AI请求
+  // 构建请求体
+  设置 全局变量 请求体 = {
+    "model": "qwen-turbo",
+    "input": {
+      "messages": 全局变量 对话历史
+    },
+    "parameters": {
+      "result_format": "message"
+    }
+  }
+  
+  // 发送POST请求
+  调用 Web1.发送JSON请求(
+    网址: 全局变量 API地址,
+    JSON数据: 调用 JSON.字典转JSON(全局变量 请求体),
+    请求头: {
+      "Authorization": "Bearer " + 全局变量 API密钥,
+      "Content-Type": "application/json"
+    }
+  )
+过程结束
+```
+
+### 4.3 处理响应
+
+```
+当 Web1.收到JSON响应(响应码, 响应内容) 时
+  如果 响应码 = 200 则
+    // 解析响应
+    设置 全局变量 响应数据 = 响应内容
+    设置 全局变量 AI回复 = 获取键路径的值(全局变量 响应数据, ["data", "output", "choices", 0, "message", "content"], "无回复")
+    
+    如果 全局变量 AI回复 ≠ "无回复" 则
+      设置 Label_Response.文本 = 全局变量 AI回复
+      调用 添加消息到历史("assistant", 全局变量 AI回复)
+    否则
+      设置 Label_Response.文本 = "抱歉，AI没有回复"
+    如果结束
+  否则
+    设置 Label_Response.文本 = "请求失败: " + 响应码
+    调用 Notifier1.显示消息("请求失败: " + 响应码)
+  如果结束
+  
+  设置 Button_Send.启用 = 真
+  设置 TextBox_Input.文本 = ""
+过程结束
+```
+
+### 4.4 历史记录管理
+
+```
+过程 添加消息到历史(角色, 内容)
+  设置 全局变量 新消息 = {
+    "role": 角色,
+    "content": 内容
+  }
+  添加项目到列表(全局变量 对话历史, 全局变量 新消息)
+过程结束
+
+当 Button_ClearHistory.被点击 时
+  设置 全局变量 对话历史 = 创建空列表()
+  设置 Label_Response.文本 = "对话历史已清空"
+  调用 Notifier1.显示消息("对话历史已清空")
+```
+
+---
+
+## 五、完整对话界面代码
+
+### 5.1 界面组件
+
+```
+垂直布局
+├── Label_Title（标题：AI助手）
+├── 滚动布局
+│   └── VerticalScrollArrangement_Chat（聊天内容区）
+├── 水平布局
+│   ├── TextBox_Input（输入框）
+│   └── Button_Send（发送按钮）
+└── Button_ClearHistory（清空历史）
+```
+
+### 5.2 主流程代码
+
+```
+初始化全局变量 API密钥 = "sk-xxxxxxxx"
+初始化全局变量 对话历史 = 创建空列表()
+
+当 Screen1.初始化 时
+  设置 Button_Send.启用 = 假  // 未输入时不启用
+
+当 TextBox_Input.文本改变 时
+  设置 Button_Send.启用 = TextBox_Input.文本 ≠ ""
+
+当 Button_Send.被点击 时
+  // 获取用户输入
+  设置 全局变量 用户消息 = TextBox_Input.文本
+  
+  // 显示用户消息
+  调用 添加聊天项("user", 全局变量 用户消息)
+  
+  // 清空输入框
+  设置 TextBox_Input.文本 = ""
+  
+  // 调用AI
+  调用 调用AI(全局变量 用户消息)
+
+过程 调用AI(用户消息)
+  设置 Label_Thinking.可见 = 真
+  设置 Label_Thinking.文本 = "AI正在思考..."
+  
+  // 构建请求
+  设置 全局变量 请求体 = {
+    "model": "qwen-plus",
+    "input": {
+      "messages": 全局变量 对话历史
+    },
+    "parameters": {
+      "result_format": "message"
+    }
+  }
+  
+  // 发送请求
+  调用 Web1.发送JSON请求(
+    网址: "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+    JSON数据: 调用 JSON.字典转JSON(全局变量 请求体),
+    请求头: "Authorization: Bearer " + 全局变量 API密钥
+  )
+
+当 Web1.收到JSON响应(响应码, 响应) 时
+  设置 Label_Thinking.可见 = 假
+  
+  如果 响应码 = 200 则
+    设置 全局变量 AI回复 = 获取键路径的值(响应, ["data", "output", "choices", 0, "message", "content"], "")
+    
+    如果 全局变量 AI回复 ≠ "" 则
+      调用 添加聊天项("assistant", 全局变量 AI回复)
+      调用 添加消息到历史("assistant", 全局变量 AI回复)
+    否则
+      调用 添加聊天项("assistant", "抱歉，AI没有回复")
+    如果结束
+  否则
+    调用 添加聊天项("assistant", "请求失败: " + 响应码)
+  如果结束
+
+过程 添加聊天项(角色, 内容)
+  // 创建聊天气泡
+  设置 全局变量 气泡 = 调用 Label.创建组件(VerticalScrollArrangement_Chat)
+  调用 全局变量 气泡.设置属性("文本", 内容)
+  调用 全局变量 气泡.设置属性("宽度", "充满")
+  调用 全局变量 气泡.设置属性("自动换行", 真)
+  
+  如果 角色 = "user" 则
+    调用 全局变量 气泡.设置属性("背景颜色", 蓝色)
+    调用 全局变量 气泡.设置属性("文本颜色", 白色)
+  否则
+    调用 全局变量 气泡.设置属性("背景颜色", 浅灰色)
+    调用 全局变量 气泡.设置属性("文本颜色", 黑色)
+  如果结束
+  
+  // 滚动到底部
+  调用 VerticalScrollArrangement_Chat.滚动到最底部()
+过程结束
+```
+
+---
+
+## 六、常用模型选择
+
+### 6.1 对话模型
+
+| 模型 | 特点 | 适用场景 | 价格 |
+|------|------|---------|------|
+| qwen-turbo | 速度快 | 快速响应 | 低 |
+| qwen-plus | 能力强 | 复杂任务 | 中 |
+| qwen-max | 最强 | 高质量回答 | 高 |
+
+### 6.2 选择建议
+
+```
+当 Button_SelectModel.被点击 时
+  调用 Notifier1.显示选择对话框(
+    对话框标题: "选择模型",
+    消息: "请选择AI模型",
+    按钮1文本: "qwen-turbo（快速）",
+    按钮2文本: "qwen-plus（平衡）",
+    按钮3文本: "qwen-max（高质量）"
+  )
+
+当 Notifier1.选择完成(选择) 时
+  如果 选择 = "qwen-turbo（快速）" 则
+    设置 全局变量 当前模型 = "qwen-turbo"
+  否则 如果 选择 = "qwen-plus（平衡）" 则
+    设置 全局变量 当前模型 = "qwen-plus"
+  否则
+    设置 全局变量 当前模型 = "qwen-max"
+  如果结束
+  
+  调用 Notifier1.显示消息("已切换到: " + 全局变量 当前模型)
+```
+
+---
+
+## 七、常见问题
+
+### 7.1 请求返回401
+
+**原因**：API Key无效或过期  
+**解决**：检查API Key是否正确，必要时重新生成
+
+### 7.2 请求返回429
+
+**原因**：请求频率过高  
+**解决**：
+- 添加请求间隔（如1-2秒）
+- 申请更高的QPS限制
+
+### 7.3 响应超时
+
+**原因**：模型处理时间过长  
+**解决**：
+- 设置更长的Web1.Timeout
+- 使用异步模式
+
+### 7.4 费用问题
+
+**解决**：
+- 设置每日用量上限
+- 使用免费额度测试
+
+---
+
+## 八、安全注意事项
+
+1. **API Key保护**：
+   - 不要在前端代码中明文存储
+   - 使用服务器代理转发请求
+
+2. **内容过滤**：
+   - 百炼平台有内容安全审核
+   - 避免发送敏感内容
+
+3. **费用控制**：
+   - 设置Token使用上限
+   - 监控API调用量
+
+---
+
+## 九、扩展功能
+
+### 9.1 流式输出（高级）
+
+百炼支持SSE流式输出，可在AI回答时逐字显示。
+
+### 9.2 图像理解
+
+```
+设置 全局变量 请求体 = {
+  "model": "qwen-vl-plus",
+  "input": {
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {"text": "这张图片里有什么？"},
+          {"image": "base64编码的图片"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 9.3 图像生成
+
+```
+设置 全局变量 请求体 = {
+  "model": "wanx-v1",
+  "input": {
+    "prompt": "一只可爱的猫咪在草地上玩耍"
+  }
+}
+```
+
+---
+
+## 十、总结
+
+调用阿里云百炼大模型的步骤：
+1. ✅ 获取API Key
+2. ✅ 配置Web客户端
+3. ✅ 构建请求体（JSON格式）
+4. ✅ 发送HTTP请求
+5. ✅ 解析AI回复
+6. ✅ 管理对话历史
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-29  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

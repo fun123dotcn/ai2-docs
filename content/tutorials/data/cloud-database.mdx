@@ -1,0 +1,442 @@
+---
+title: App Inventor 2 云数据库配置完整教程
+description: "本教程对比三种主流云数据库方案，手把手教你配置和使用。"
+---
+
+
+# App Inventor 2 云数据库配置完整教程
+
+> 本教程对比三种主流云数据库方案，手把手教你配置和使用。
+
+---
+
+## 一、云数据库方案对比
+
+| 方案 | 实时性 | 易用性 | 免费额度 | 适用场景 |
+|------|--------|--------|---------|---------|
+| **Firebase** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 免费套餐 | 实时聊天、协作应用 |
+| **CloudDB** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | MIT免费服务 | 教学项目、简单存储 |
+| **TinyWebDB** | ⭐⭐ | ⭐⭐⭐⭐⭐ | 自建服务器 | 自定义需求、企业应用 |
+
+---
+
+## 二、Firebase实时数据库
+
+### 2.1 创建Firebase项目
+
+1. 访问 [Firebase控制台](https://console.firebase.google.com/)
+2. 点击"添加项目"
+3. 输入项目名称（如：my-appinventor-app）
+4. 选择区域（建议选亚洲区域）
+5. 等待项目创建完成（约1分钟）
+
+### 2.2 配置实时数据库
+
+1. 在项目控制台，选择"实时数据库"
+2. 点击"创建数据库"
+3. 选择测试模式（开发阶段用）
+4. 选择数据库位置（建议：asia-east1）
+
+### 2.3 获取配置信息
+
+在"项目设置" → "您的应用" → 选择Web应用，获取：
+
+```
+项目ID: my-appinventor-app
+API密钥: AIzaSyBxxxxxxxxxxxxxxxx
+数据库URL: https://my-appinventor-app.firebaseio.com/
+```
+
+### 2.4 App Inventor配置
+
+**组件设置**：
+
+| 组件 | 属性 | 值 |
+|------|------|-----|
+| FirebaseDB | FirebaseToken | 你的API密钥 |
+| FirebaseDB | FirebaseURL | 你的数据库URL |
+
+**代码示例**：
+
+```
+当 Screen1.初始化 时
+  设置 FirebaseDB1.FirebaseToken = "AIzaSyBxxxxxxxxxxxxxxxx"
+  设置 FirebaseDB1.FirebaseURL = "https://my-appinventor-app.firebaseio.com/"
+
+当 Button_Save.被点击 时
+  调用 FirebaseDB1.存储值(
+    标签: "user/name",
+    值为标签: TextBox_Name.文本
+  )
+  调用 Notifier1.显示消息("已保存到Firebase")
+
+当 FirebaseDB1.数据改变(标签, 值) 时
+  设置 Label_Data.文本 = 值
+
+当 FirebaseDB1.存储成功(标签, 值) 时
+  调用 Notifier1.显示消息("存储成功")
+
+当 FirebaseDB1.存储失败(标签, 错误信息) 时
+  调用 Notifier1.显示消息("存储失败: " + 错误信息)
+```
+
+### 2.5 读取数据
+
+```
+当 Button_Load.被点击 时
+  调用 FirebaseDB1.获取值(标签: "user/name")
+
+当 FirebaseDB1.获取成功(标签, 值) 时
+  设置 TextBox_Name.文本 = 值
+  调用 Notifier1.显示消息("获取成功")
+
+当 FirebaseDB1.获取失败(标签, 错误信息) 时
+  调用 Notifier1.显示消息("获取失败: " + 错误信息)
+```
+
+---
+
+## 三、CloudDB（MIT云数据库）
+
+### 3.1 简介
+
+CloudDB是MIT提供的免费云数据库服务，基于Firebase，但更简单易用。
+
+### 3.2 特点
+
+- ✅ 无需配置Firebase项目
+- ✅ MIT自动提供后端
+- ✅ 适合教学和演示
+- ⚠️ 数据公开可见（不适合敏感数据）
+- ⚠️ 有存储限制
+
+### 3.3 配置步骤
+
+1. 在App Inventor设计视图，拖入 **CloudDB** 组件
+2. 设置 **ProjectBucket**（项目桶名，用于区分不同应用）
+3. 默认使用MIT服务器，无需额外配置
+
+### 3.4 代码示例
+
+```
+当 Screen1.初始化 时
+  设置 CloudDB1.ProjectBucket = "my-unique-bucket-name"
+
+当 Button_Save.被点击 时
+  调用 CloudDB1.存储值(
+    标签: "message",
+    值为标签: TextBox_Message.文本
+  )
+
+当 CloudDB1.数据改变(标签, 值) 时
+  设置 Label_Data.文本 = 值
+```
+
+---
+
+## 四、TinyWebDB（自建云数据库）
+
+### 4.1 适用场景
+
+- 需要完全控制数据
+- 企业级应用
+- 需要自定义API逻辑
+- 数据隐私要求高
+
+### 4.2 搭建方案
+
+**方案A：Python Flask服务器**
+
+```python
+# server.py
+from flask import Flask, request, jsonify
+import json
+import os
+
+app = Flask(__name__)
+DATA_FILE = 'tinywebdb.json'
+
+# 初始化数据文件
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, 'w') as f:
+        json.dump({}, f)
+
+def load_data():
+    with open(DATA_FILE, 'r') as f:
+        return json.load(f)
+
+def save_data(data):
+    with open(DATA_FILE, 'w') as f:
+        json.dump(data, f)
+
+@app.route('/storeavalue', methods=['POST'])
+def store_value():
+    tag = request.json.get('tag')
+    value = request.json.get('value')
+    data = load_data()
+    data[tag] = value
+    save_data(data)
+    return jsonify(['STORED', tag, value])
+
+@app.route('/getvalue', methods=['POST'])
+def get_value():
+    tag = request.json.get('tag')
+    data = load_data()
+    value = data.get(tag, '')
+    return jsonify(['VALUE', tag, value])
+
+@app.route('/deletevalue', methods=['POST'])
+def delete_value():
+    tag = request.json.get('tag')
+    data = load_data()
+    if tag in data:
+        del data[tag]
+        save_data(data)
+    return jsonify(['DELETED', tag])
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+```
+
+**部署到云服务器**：
+
+```bash
+# 安装依赖
+pip install flask
+
+# 运行服务
+python server.py
+
+# 使用nohup后台运行
+nohup python server.py > tinywebdb.log 2>&1 &
+```
+
+**方案B：使用云平台**
+
+- **Heroku**：免费部署Flask应用
+- **Railway**：支持Python应用
+- **阿里云函数计算**：按需付费
+
+### 4.3 App Inventor配置
+
+```
+当 Screen1.初始化 时
+  设置 TinyWebDB1.ServiceURL = "http://your-server.com:5000"
+
+当 Button_Save.被点击 时
+  调用 TinyWebDB1.存储值(
+    标签: "data",
+    值为标签: TextBox_Data.文本
+  )
+
+当 TinyWebDB1.存储成功(标签, 值) 时
+  调用 Notifier1.显示消息("存储成功")
+
+当 TinyWebDB1.获取成功(标签, 值) 时
+  设置 TextBox_Data.文本 = 值
+```
+
+---
+
+## 五、实时聊天案例（Firebase）
+
+### 5.1 界面设计
+
+| 组件 | 名称 | 说明 |
+|------|------|------|
+| 垂直滚动布局 | VerticalScrollArrangement1 | 聊天消息区 |
+| 文本框 | TextBox_Message | 输入消息 |
+| 按钮 | Button_Send | 发送按钮 |
+| FirebaseDB | FirebaseDB1 | 数据库组件 |
+
+### 5.2 代码实现
+
+```
+初始化全局变量 用户名 = "用户" + 随机数(1, 9999)
+
+当 Screen1.初始化 时
+  设置 FirebaseDB1.FirebaseURL = "https://your-app.firebaseio.com/"
+  
+  // 监听消息变化
+  调用 FirebaseDB1.监听标签改变(标签: "messages")
+
+当 Button_Send.被点击 时
+  如果 TextBox_Message.文本 ≠ "" 则
+    设置 全局变量 消息 = {
+      "user": 全局变量 用户名,
+      "text": TextBox_Message.文本,
+      "time": 调用 时钟1.获取时间()
+    }
+    
+    // 生成唯一消息ID
+    设置 全局变量 消息ID = "msg_" + 调用 时钟1.获取时间毫秒()
+    
+    // 存储消息
+    调用 FirebaseDB1.存储值(
+      标签: "messages/" + 全局变量 消息ID,
+      值为标签: 全局变量 消息
+    )
+    
+    设置 TextBox_Message.文本 = ""
+  如果结束
+
+当 FirebaseDB1.数据改变(标签, 值) 时
+  如果 标签 = "messages" 或 文本包含(标签, "messages/") 则
+    // 新消息到达，刷新UI
+    调用 加载消息()
+  如果结束
+
+过程 加载消息
+  // 获取所有消息
+  调用 FirebaseDB1.获取值(标签: "messages")
+
+当 FirebaseDB1.获取成功(标签, 值) 时
+  如果 标签 = "messages" 则
+    // 解析消息列表
+    设置 全局变量 消息列表 = 值
+    
+    // 清空聊天区
+    调用 VerticalScrollArrangement1.清空()
+    
+    // 显示所有消息
+    对于 每个消息 在 全局变量 消息列表 中
+      调用 显示消息气泡(消息)
+    循环结束
+  如果结束
+
+过程 显示消息气泡(消息数据)
+  设置 全局变量 气泡 = 调用 Label.创建组件(VerticalScrollArrangement1)
+  
+  设置 全局变量 发送者 = 获取键的值(消息数据, "user", "匿名")
+  设置 全局变量 内容 = 获取键的值(消息数据, "text", "")
+  设置 全局变量 时间 = 获取键的值(消息数据, "time", "")
+  
+  调用 全局变量 气泡.设置属性("文本", 发送者 + " [" + 时间 + "]: " + 内容)
+  
+  如果 发送者 = 全局变量 用户名 则
+    调用 全局变量 气泡.设置属性("背景颜色", 蓝色)
+    调用 全局变量 气泡.设置属性("文本颜色", 白色)
+  否则
+    调用 全局变量 气泡.设置属性("背景颜色", 浅灰色)
+  如果结束
+过程结束
+```
+
+---
+
+## 六、数据库安全规则（Firebase）
+
+### 6.1 开发模式（允许所有读写）
+
+```json
+{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
+```
+
+### 6.2 用户认证模式
+
+```json
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}
+```
+
+### 6.3 只读公开数据
+
+```json
+{
+  "rules": {
+    "public": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
+```
+
+---
+
+## 七、常见问题
+
+### 7.1 连接失败
+
+**原因**：网络问题或URL错误  
+**解决**：
+- 检查网络连接
+- 确认FirebaseURL格式正确
+- 检查防火墙设置
+
+### 7.2 数据不同步
+
+**原因**：未监听数据变化  
+**解决**：使用 `FirebaseDB1.监听标签改变()` 方法
+
+### 7.3 CloudDB数据丢失
+
+**原因**：ProjectBucket冲突  
+**解决**：使用唯一的项目桶名
+
+### 7.4 TinyWebDB超时
+
+**原因**：服务器响应慢  
+**解决**：
+- 增加TinyWebDB.Timeout时间
+- 优化服务器性能
+- 使用CDN加速
+
+---
+
+## 八、性能优化建议
+
+| 问题 | 解决方案 |
+|------|---------|
+| 数据量大 | 分页加载、懒加载 |
+| 实时性要求高 | 使用Firebase实时监听 |
+| 离线使用 | 本地TinyDB缓存 + 云端同步 |
+| 并发冲突 | 使用时间戳或UUID作为键 |
+
+---
+
+## 九、选择建议
+
+| 需求 | 推荐方案 |
+|------|---------|
+| 快速开发、演示 | CloudDB |
+| 实时应用、聊天 | Firebase |
+| 企业应用、隐私数据 | 自建TinyWebDB |
+| 教学项目 | CloudDB或TinyWebDB |
+| 商业应用 | Firebase付费版 |
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-30  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

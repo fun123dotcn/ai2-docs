@@ -1,0 +1,185 @@
+---
+title: App Inventor 2 上传文件 + 蓝牙高版本教程
+description: 当 Screen1.初始化 时 // 检查Android版本 设置 全局变量 安卓版本 = 调用 PhoneStatus1.AndroidVersion()
+---
+
+
+# App Inventor 2 上传文件 + 蓝牙高版本教程
+
+---
+
+## 一、上传文件到服务器
+
+### 1.1 上传文本文件
+
+```
+过程 上传文本文件(文件路径, 上传URL)
+  // 读取文件内容
+  调用 文件1.读取文件(文件路径)
+
+当 文件1.读取完成(文件内容) 时
+  // 发送到服务器
+  调用 Web1.设置请求头([
+    ["Content-Type", "text/plain"],
+    ["X-Filename", 调用 获取文件名(全局变量 当前文件路径)]
+  ])
+  调用 Web1.发送文本请求(
+    网址: 全局变量 上传URL,
+    方法: "POST",
+    内容: 文件内容
+  )
+过程结束
+```
+
+### 1.2 上传二进制文件（multipart/form-data）
+
+```
+// 使用Web扩展上传
+过程 上传文件(文件路径, 上传URL, 字段名)
+  调用 WebExtension1.上传文件(
+    URL: 上传URL,
+    文件路径: 文件路径,
+    字段名: 字段名,
+    额外参数: {
+      "user_id": 全局变量 用户ID,
+      "timestamp": 调用 时钟1.获取时间毫秒()
+    }
+  )
+
+当 WebExtension1.上传成功(响应) 时
+  设置 全局变量 响应数据 = 调用 JSON.文本转字典(响应)
+  设置 全局变量 文件URL = 获取键的值(全局变量 响应数据, "url", "")
+  调用 Notifier1.显示消息("上传成功: " + 全局变量 文件URL)
+
+当 WebExtension1.上传进度(已上传, 总大小) 时
+  设置 全局变量 进度 = 已上传 * 100 / 总大小
+  设置 ProgressBar1.值 = 全局变量 进度
+  设置 Label_Progress.文本 = 四舍五入(全局变量 进度, 1) + "%"
+
+当 WebExtension1.上传失败(错误) 时
+  调用 Notifier1.显示消息("上传失败: " + 错误)
+```
+
+### 1.3 PHP服务器端代码
+
+```php
+<?php
+// upload.php
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_FILES['file'])) {
+        $file = $_FILES['file'];
+        $uploadDir = 'uploads/';
+        
+        // 生成唯一文件名
+        $filename = uniqid() . '_' . basename($file['name']);
+        $uploadPath = $uploadDir . $filename;
+        
+        if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            echo json_encode([
+                'success' => true,
+                'url' => 'http://yourserver.com/' . $uploadPath,
+                'filename' => $filename
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Upload failed']);
+        }
+    }
+}
+?>
+```
+
+---
+
+## 二、蓝牙高版本安卓适配
+
+### 2.1 Android版本权限对比
+
+| Android版本 | 需要的权限 |
+|------------|-----------|
+| Android 11及以下 | ACCESS_FINE_LOCATION |
+| Android 12 (API 31) | BLUETOOTH_SCAN + BLUETOOTH_CONNECT |
+| Android 13+ | BLUETOOTH_SCAN + BLUETOOTH_CONNECT + BLUETOOTH_ADVERTISE |
+
+### 2.2 权限申请代码
+
+```
+当 Screen1.初始化 时
+  // 检查Android版本
+  设置 全局变量 安卓版本 = 调用 PhoneStatus1.AndroidVersion()
+  
+  如果 全局变量 安卓版本 ≥ 12 则
+    // Android 12+ 需要新权限
+    调用 权限扩展1.申请权限([
+      "android.permission.BLUETOOTH_SCAN",
+      "android.permission.BLUETOOTH_CONNECT"
+    ])
+  否则
+    // Android 11及以下
+    调用 权限扩展1.申请权限([
+      "android.permission.ACCESS_FINE_LOCATION"
+    ])
+  如果结束
+
+当 权限扩展1.权限结果(权限, 是否授予) 时
+  如果 是否授予 = 真 则
+    调用 Notifier1.显示消息("权限已授予，可以使用蓝牙")
+    调用 初始化蓝牙()
+  否则
+    调用 Notifier1.显示消息("蓝牙权限被拒绝，功能受限")
+  如果结束
+```
+
+### 2.3 蓝牙扫描适配
+
+```
+过程 初始化蓝牙
+  如果 全局变量 安卓版本 ≥ 12 则
+    // 使用新API扫描
+    调用 BluetoothLE1.StartScanning()
+  否则
+    // 旧版扫描（需要位置权限）
+    调用 BluetoothClient1.AddressesAndNames()
+  如果结束
+过程结束
+
+// 连接蓝牙设备
+过程 连接蓝牙设备(设备地址)
+  如果 全局变量 安卓版本 ≥ 12 则
+    调用 BluetoothLE1.Connect(设备地址)
+  否则
+    调用 BluetoothClient1.Connect(设备地址)
+  如果结束
+过程结束
+```
+
+### 2.4 常见问题解决
+
+| 问题 | 原因 | 解决方案 |
+|------|------|---------|
+| 扫描不到设备 | 缺少BLUETOOTH_SCAN权限 | 申请新权限 |
+| 连接失败 | 缺少BLUETOOTH_CONNECT权限 | 申请新权限 |
+| 位置权限被拒 | Android 12+不需要位置权限 | 改用新蓝牙权限 |
+| 应用崩溃 | 未处理权限拒绝 | 添加权限检查 |
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

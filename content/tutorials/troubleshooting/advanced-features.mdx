@@ -1,0 +1,285 @@
+---
+title: App Inventor 2 高级功能合集
+description: 初始化全局变量 百度_API_Key = "your_api_key" 初始化全局变量 百度_Secret_Key = "your_secret_key" 初始化全局变量 百度_Access_Token = ""
+---
+
+
+# App Inventor 2 高级功能合集
+
+---
+
+## 一、执行JavaScript代码
+
+### 1.1 WebViewer执行JS
+
+```
+// 在WebViewer中执行JS
+过程 执行JS(JS代码)
+  调用 WebViewer1.EvaluateJavaScript(JS代码)
+过程结束
+
+// 示例：修改网页内容
+调用 执行JS("document.getElementById('title').innerText = '新标题'")
+
+// 示例：获取网页数据
+调用 执行JS("AppInventor.setWebViewString(document.title)")
+
+当 WebViewer1.WebViewStringChange(新值) 时
+  设置 Label_Title.文本 = 新值
+
+// 示例：注入CSS
+调用 执行JS("
+  var style = document.createElement('style');
+  style.innerHTML = 'body { background: #f0f0f0; font-size: 18px; }';
+  document.head.appendChild(style);
+")
+
+// 示例：调用网页函数
+调用 执行JS("myFunction('参数1', '参数2')")
+```
+
+### 1.2 JS与App Inventor双向通信
+
+```
+// App Inventor → JS
+调用 WebViewer1.EvaluateJavaScript("receiveFromApp('" + 全局变量 数据 + "')")
+
+// JS → App Inventor（在HTML中）
+// AppInventor.setWebViewString(JSON.stringify({type: 'click', data: 'value'}))
+
+当 WebViewer1.WebViewStringChange(新值) 时
+  设置 全局变量 消息 = 调用 JSON.文本转字典(新值)
+  设置 全局变量 类型 = 获取键的值(全局变量 消息, "type", "")
+  
+  如果 全局变量 类型 = "click" 则
+    调用 处理点击事件(获取键的值(全局变量 消息, "data", ""))
+  否则 如果 全局变量 类型 = "submit" 则
+    调用 处理提交(获取键的值(全局变量 消息, "data", {}))
+  如果结束
+```
+
+---
+
+## 二、百度云OCR识别图片文字
+
+### 2.1 获取Access Token
+
+```
+初始化全局变量 百度_API_Key = "your_api_key"
+初始化全局变量 百度_Secret_Key = "your_secret_key"
+初始化全局变量 百度_Access_Token = ""
+
+过程 获取百度Token
+  调用 Web1.发送文本请求(
+    网址: "https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=" + 
+          全局变量 百度_API_Key + "&client_secret=" + 全局变量 百度_Secret_Key
+  )
+
+当 Web1.收到文本响应(响应文本) 时
+  如果 全局变量 当前请求 = "token" 则
+    设置 全局变量 响应 = 调用 JSON.文本转字典(响应文本)
+    设置 全局变量 百度_Access_Token = 获取键的值(全局变量 响应, "access_token", "")
+  如果结束
+```
+
+### 2.2 OCR识别
+
+```
+过程 OCR识别图片(图片路径)
+  // 读取图片并转Base64
+  设置 全局变量 Base64图片 = 调用 图像扩展1.图片转Base64(图片路径)
+  
+  // 调用百度OCR API
+  调用 Web1.设置请求头([["Content-Type", "application/x-www-form-urlencoded"]])
+  调用 Web1.发送文本请求(
+    网址: "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token=" + 全局变量 百度_Access_Token,
+    方法: "POST",
+    内容: "image=" + 调用 Web1.UriEncode(全局变量 Base64图片)
+  )
+
+当 Web1.收到文本响应(响应文本) 时
+  如果 全局变量 当前请求 = "ocr" 则
+    设置 全局变量 OCR结果 = 调用 JSON.文本转字典(响应文本)
+    设置 全局变量 文字列表 = 获取键的值(全局变量 OCR结果, "words_result", [])
+    
+    设置 全局变量 识别文本 = ""
+    对于 每个 行 在 全局变量 文字列表 中
+      设置 全局变量 识别文本 = 全局变量 识别文本 + 获取键的值(行, "words", "") + "\n"
+    循环结束
+    
+    设置 Label_OCR.文本 = 全局变量 识别文本
+  如果结束
+```
+
+---
+
+## 三、历史数据展示
+
+```
+初始化全局变量 历史数据 = []
+初始化全局变量 最大历史条数 = 100
+
+// 添加历史记录
+过程 添加历史记录(数据)
+  设置 全局变量 记录 = {
+    "time": 调用 时钟1.格式化时间("yyyy-MM-dd HH:mm:ss"),
+    "data": 数据,
+    "timestamp": 调用 时钟1.获取时间毫秒()
+  }
+  
+  添加项目到列表(全局变量 历史数据, 全局变量 记录)
+  
+  // 限制条数
+  如果 获取列表长度(全局变量 历史数据) > 全局变量 最大历史条数 则
+    设置 全局变量 历史数据 = 获取列表子集(全局变量 历史数据, 2, 全局变量 最大历史条数 + 1)
+  如果结束
+  
+  // 持久化保存
+  调用 TinyDB1.存储值(标签: "history_data", 值为标签: 调用 JSON.列表转文本(全局变量 历史数据))
+过程结束
+
+// 加载历史数据
+当 Screen1.初始化 时
+  设置 全局变量 历史JSON = 调用 TinyDB1.获取值(标签: "history_data", 值为标签默认: "[]")
+  设置 全局变量 历史数据 = 调用 JSON.文本转列表(全局变量 历史JSON)
+  调用 显示历史数据()
+
+// 显示历史数据
+过程 显示历史数据
+  设置 全局变量 显示列表 = 创建空列表()
+  
+  // 倒序显示（最新在前）
+  对于 i 从 获取列表长度(全局变量 历史数据) 到 1 步长 -1
+    设置 全局变量 记录 = 获取列表项目(全局变量 历史数据, i)
+    设置 全局变量 时间 = 获取键的值(全局变量 记录, "time", "")
+    设置 全局变量 数据 = 获取键的值(全局变量 记录, "data", "")
+    添加项目到列表(全局变量 显示列表, 全局变量 时间 + ": " + 全局变量 数据)
+  循环结束
+  
+  设置 ListView1.Elements = 全局变量 显示列表
+
+// 按时间范围筛选
+过程 筛选历史数据(开始时间戳, 结束时间戳)
+  设置 全局变量 筛选结果 = 创建空列表()
+  
+  对于 每个 记录 在 全局变量 历史数据 中
+    设置 全局变量 时间戳 = 获取键的值(记录, "timestamp", 0)
+    如果 全局变量 时间戳 ≥ 开始时间戳 且 全局变量 时间戳 ≤ 结束时间戳 则
+      添加项目到列表(全局变量 筛选结果, 记录)
+    如果结束
+  循环结束
+  
+  返回 全局变量 筛选结果
+过程结束
+```
+
+---
+
+## 四、电池电量监测
+
+```
+// 使用电池扩展
+当 Screen1.初始化 时
+  调用 时钟1.开启定时器(间隔: 30000)  // 每30秒检查一次
+  调用 更新电池状态()
+
+过程 更新电池状态
+  设置 全局变量 电量 = 调用 BatteryExtension1.获取电量()
+  设置 全局变量 充电状态 = 调用 BatteryExtension1.是否充电()
+  设置 全局变量 电池温度 = 调用 BatteryExtension1.获取温度()
+  
+  设置 Label_Battery.文本 = 全局变量 电量 + "%"
+  
+  如果 全局变量 充电状态 = 真 则
+    设置 Label_Status.文本 = "⚡ 充电中"
+  否则 如果 全局变量 电量 < 20 则
+    设置 Label_Status.文本 = "🔴 电量低"
+    调用 Notifier1.显示消息("电量不足20%，请及时充电")
+  否则
+    设置 Label_Status.文本 = "🔋 正常"
+  如果结束
+  
+  // 更新进度条
+  设置 ProgressBar_Battery.值 = 全局变量 电量
+
+当 时钟1.计时 时
+  调用 更新电池状态()
+```
+
+---
+
+## 五、位置传感器（GPS）
+
+```
+当 Screen1.初始化 时
+  设置 LocationSensor1.Enabled = 真
+
+当 LocationSensor1.LocationChanged(纬度, 经度, 高度, 速度) 时
+  设置 全局变量 纬度 = 纬度
+  设置 全局变量 经度 = 经度
+  设置 全局变量 高度 = 高度
+  设置 全局变量 速度 = 速度
+  
+  设置 Label_Lat.文本 = "纬度: " + 四舍五入(纬度, 6)
+  设置 Label_Lon.文本 = "经度: " + 四舍五入(经度, 6)
+  设置 Label_Alt.文本 = "高度: " + 四舍五入(高度, 1) + "m"
+  设置 Label_Speed.文本 = "速度: " + 四舍五入(速度 * 3.6, 1) + "km/h"
+
+// 计算两点距离（Haversine公式）
+过程 计算GPS距离(纬1, 经1, 纬2, 经2)
+  设置 全局变量 R = 6371000  // 地球半径（米）
+  设置 全局变量 φ1 = 纬1 * 3.14159 / 180
+  设置 全局变量 φ2 = 纬2 * 3.14159 / 180
+  设置 全局变量 Δφ = (纬2 - 纬1) * 3.14159 / 180
+  设置 全局变量 Δλ = (经2 - 经1) * 3.14159 / 180
+  
+  设置 全局变量 a = 正弦(全局变量 Δφ / 2) ^ 2 + 
+    余弦(全局变量 φ1) * 余弦(全局变量 φ2) * 正弦(全局变量 Δλ / 2) ^ 2
+  设置 全局变量 c = 2 * 反正切(平方根(全局变量 a), 平方根(1 - 全局变量 a))
+  
+  返回 全局变量 R * 全局变量 c  // 距离（米）
+过程结束
+
+// 轨迹记录
+初始化全局变量 轨迹点列表 = []
+
+当 LocationSensor1.LocationChanged(纬度, 经度, 高度, 速度) 时
+  添加项目到列表(全局变量 轨迹点列表, {
+    "lat": 纬度,
+    "lon": 经度,
+    "time": 调用 时钟1.获取时间毫秒()
+  })
+  
+  // 计算总距离
+  如果 获取列表长度(全局变量 轨迹点列表) > 1 则
+    设置 全局变量 上一点 = 获取列表项目(全局变量 轨迹点列表, 获取列表长度(全局变量 轨迹点列表) - 1)
+    设置 全局变量 距离增量 = 调用 计算GPS距离(
+      获取键的值(全局变量 上一点, "lat", 0),
+      获取键的值(全局变量 上一点, "lon", 0),
+      纬度, 经度
+    )
+    设置 全局变量 总距离 = 全局变量 总距离 + 全局变量 距离增量
+    设置 Label_Distance.文本 = 四舍五入(全局变量 总距离 / 1000, 2) + " km"
+  如果结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

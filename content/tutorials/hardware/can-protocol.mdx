@@ -1,0 +1,652 @@
+---
+title: App Inventor 2 CAN总线协议详解
+description: "本教程深入讲解CAN总线工业通信协议，包括CAN 2.0/CAN FD标准、数据帧结构、ID过滤、位定时配置，以及App Inventor扩展开发指南。"
+---
+
+
+# App Inventor 2 CAN总线协议详解
+
+> 本教程深入讲解CAN总线工业通信协议，包括CAN 2.0/CAN FD标准、数据帧结构、ID过滤、位定时配置，以及App Inventor扩展开发指南。
+
+---
+
+## 一、CAN总线概述
+
+### 1.1 协议特点
+
+| 特性 | CAN 2.0 | CAN FD |
+|------|---------|--------|
+| 传输速率 | 最高1Mbps | 最高8Mbps |
+| 数据长度 | 最大8字节 | 最大64字节 |
+| 帧结构 | 固定 | 可变 |
+| 校验 | CRC15 | CRC21/CRC17 |
+
+### 1.2 应用领域
+
+| 领域 | 说明 |
+|------|------|
+| 汽车电子 | 车载网络（OBD诊断） |
+| 工业控制 | 现场总线 |
+| 医疗设备 | 高速数据传输 |
+| 船舶航空 | 可靠通信 |
+
+### 1.3 物理层
+
+```
+┌─────────┐    CAN_H     ┌─────────┐
+│  节点1  │─────────────→│  节点2  │
+└─────────┘    CAN_L     └─────────┘
+    │                           │
+    └─────────终端电阻120Ω──────┘
+```
+
+---
+
+## 二、CAN数据帧结构
+
+### 2.1 标准帧（11位ID）
+
+```
+┌────────┬────┬────┬─────┬────────┬────┬─────┬──────┬────┐
+│  SOF   │ ID │ RTR│ IDE │ DLC    │ DATA      │ CRC │ ACK│ EOF│
+│  1位   │11位│1位 │1位  │ 4位    │ 0-8字节   │15位│ 2位│ 7位│
+└────────┴────┴────┴─────┴────────┴────────────┴────┴─────┴────┘
+```
+
+### 2.2 扩展帧（29位ID）
+
+```
+┌────────┬────┬─────┬─────────────────┬────┬────┬─────┬────────┬────┬─────┬──────┬────┐
+│  SOF   │ ID1│SRR │     ID2         │IDE │RTR│r0   │  DLC   │DATA     │CRC │ACK│ EOF│
+│  1位   │11位│1位  │     18位        │1位 │1位│1位  │  4位   │0-8B    │15位│2位│ 7位│
+└────────┴────┴─────┴─────────────────┴────┴────┴─────┴────────┴────────┴────┴─────┴────┘
+```
+
+### 2.3 帧类型
+
+| 帧类型 | 说明 | 用途 |
+|--------|------|------|
+| 数据帧 | 传输数据 | 主用 |
+| 远程帧 | 请求数据 | 较少用 |
+| 错误帧 | 错误通知 | 自动 |
+| 过载帧 | 过载通知 | 较少用 |
+
+---
+
+## 三、CAN消息格式
+
+### 3.1 消息结构
+
+```json
+{
+  "id": 0x123,           // 11位标准ID或29位扩展ID
+  "extended": false,     // 是否扩展帧
+  "rtr": false,          // 远程帧标志
+  "dlc": 8,              // 数据长度码(0-8)
+  "data": [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]  // 数据字节
+}
+```
+
+### 3.2 DLC编码
+
+| DLC值 | 实际数据长度 |
+|-------|------------|
+| 0 | 0字节 |
+| 1 | 1字节 |
+| 2 | 2字节 |
+| 3 | 3字节 |
+| 4 | 4字节 |
+| 5 | 5字节 |
+| 6 | 6字节 |
+| 7 | 7字节 |
+| 8 | 8字节 |
+
+### 3.3 常用CAN ID
+
+| CAN ID | 说明 | 备注 |
+|--------|------|------|
+| 0x000 | 广播 | 发送给所有节点 |
+| 0x100-0x1FF | 发动机数据 | OBD |
+| 0x200-0x2FF | 车速/转速 | OBD |
+| 0x300-0x3FF | 车身数据 | 灯光/门窗 |
+| 0x400-0x4FF | 诊断请求 | OBD诊断 |
+| 0x500-0x5FF | CANopen | 工业标准 |
+| 0x600-0x6FF | J1939 | 商用车 |
+
+---
+
+## 四、位定时配置
+
+### 4.1 位时间结构
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    1 Bit Time                        │
+├─────────────────┬──────────────────┬────────────────┤
+│     SYNC_SEG    │    PROP_SEG     │  PHASE_SEG1   │
+│      1 TQ       │    1-8 TQ       │    1-8 TQ     │
+├─────────────────┴───────┬──────────┴────────────────┤
+│                        │      PHASE_SEG2           │
+│                        │        1-8 TQ             │
+└────────────────────────┴───────────────────────────┘
+TQ = Time Quantum = 1 / Baud Rate / (BRP)
+```
+
+### 4.2 常用波特率配置
+
+| 波特率 | TQ数 | SYNC | PROP | PS1 | PS2 | BRP |
+|--------|------|------|------|-----|-----|-----|
+| 125Kbps | 16 | 1 | 10 | 3 | 2 | 50 |
+| 250Kbps | 16 | 1 | 10 | 3 | 2 | 25 |
+| 500Kbps | 16 | 1 | 10 | 3 | 2 | 12 |
+| 1Mbps | 8 | 1 | 5 | 2 | 1 | 10 |
+
+### 4.3 CAN FD配置
+
+```
+CAN FD参数：
+- 仲裁波特率：500Kbps（与经典CAN相同）
+- 数据波特率：2-8Mbps（可配置）
+- 数据长度：最长64字节
+- 填充位：自适应
+```
+
+---
+
+## 五、OBD-II诊断协议
+
+### 5.1 模式1：实时数据
+
+**请求**：
+```
+CAN ID: 0x7DF (广播)
+DLC: 8
+数据: [0x02, 0x01, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00]
+     [长度, 模式, PID, ...]
+```
+
+**响应**：
+```
+CAN ID: 0x7E8 (ECU响应)
+DLC: 8
+数据: [0x04, 0x41, 0x0C, 0x1A, 0xF8, 0x00, 0x00, 0x00]
+     [长度, 模式+40, PID, 高字节, 低字节, ...]
+```
+
+### 5.2 常用PID
+
+| PID | 说明 | 单位 | 数据格式 |
+|-----|------|------|---------|
+| 0x04 | 发动机负载 | % | 公式: A*100/255 |
+| 0x05 | 冷却液温度 | °C | 公式: A-40 |
+| 0x06 | 短期燃油修正Bank1 | % | 公式: (A-128)*100/128 |
+| 0x0C | 发动机转速 | rpm | 公式: (A*256+B)/4 |
+| 0x0D | 车速 | km/h | 公式: A |
+| 0x0F | 进气温度 | °C | 公式: A-40 |
+| 0x10 | 空气流量 | g/s | 公式: (A*256+B)/100 |
+| 0x11 | 节气门位置 | % | 公式: A*100/255 |
+
+---
+
+## 六、App Inventor扩展设计
+
+### 6.1 扩展功能
+
+```
+CANBus 扩展属性：
+├── 属性
+│   ├── 波特率 (BaudRate)
+│   ├── 接收滤波器 (FilterMask)
+│   ├── 接收过滤器 (FilterCode)
+│   └── 是否扩展帧 (ExtendedFrame)
+│
+├── 方法
+│   ├── 打开(设备路径) - 打开CAN适配器
+│   ├── 关闭() - 关闭连接
+│   ├── 发送(ID, 数据列表) - 发送数据帧
+│   ├── 发送远程帧(ID, DLC) - 发送远程帧
+│   ├── 设置滤波器(ID, 掩码) - 配置过滤器
+│   └── 清除滤波器() - 清除所有过滤器
+│
+└── 事件
+    ├── 帧接收(ID, 数据列表) - 接收到CAN帧
+    ├── 发送成功(ID) - 发送成功
+    ├── 发送失败(错误) - 发送失败
+    ├── 总线错误(错误信息) - 总线错误
+    └── 设备打开成功()
+    └── 设备打开失败(错误)
+```
+
+### 6.2 Java扩展核心代码
+
+```java
+// CANBus.java
+package com.appinventor.ai_canbus;
+
+import com.google.appinventor.components.annotations.*;
+import com.google.appinventor.components.common.*;
+import com.google.appinventor.components.runtime.*;
+import android.util.Log;
+
+@DesignerComponent(
+    version = 1,
+    description = "CAN Bus Interface Extension (SocketCAN)",
+    category = ComponentCategory.EXTENSION,
+    nonVisible = true,
+    iconName = "images/extension.png"
+)
+@SimpleObject(external = true)
+public class CANBus extends AndroidNonvisibleComponent {
+    
+    private static final String TAG = "CANBus";
+    
+    // CAN参数
+    private int baudRate = 500000;
+    private String devicePath = "/dev/vcan0";
+    
+    // SocketCAN文件描述符
+    private int socketFd = -1;
+    
+    public CANBus(ComponentContainer container) {
+        super(container.$form());
+    }
+    
+    @SimpleProperty
+    public void BaudRate(int rate) {
+        this.baudRate = rate;
+    }
+    
+    @SimpleProperty
+    public int BaudRate() {
+        return this.baudRate;
+    }
+    
+    @SimpleProperty
+    public void DevicePath(String path) {
+        this.devicePath = path;
+    }
+    
+    @SimpleProperty
+    public String DevicePath() {
+        return this.devicePath;
+    }
+    
+    @SimpleFunction(description = "Open CAN interface")
+    public void Open() {
+        new Thread(() -> {
+            try {
+                socketFd = openSocketCAN(devicePath, baudRate);
+                if (socketFd >= 0) {
+                    form.runOnUiThread(() -> DeviceOpenedSuccess());
+                    startReceiveThread();
+                } else {
+                    form.runOnUiThread(() -> DeviceOpenedFailure("Failed to open CAN device"));
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Open error", e);
+                form.runOnUiThread(() -> DeviceOpenedFailure(e.getMessage()));
+            }
+        }).start();
+    }
+    
+    private int openSocketCAN(String device, int baudRate) {
+        // 创建socketcan套接字
+        int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+        if (sock < 0) return -1;
+        
+        // 设置波特率
+        struct can_bittiming bt = new struct_can_bittiming();
+        bt.bitrate = baudRate;
+        bt.sample_point = 875;
+        setupBittiming(sock, bt);
+        
+        // 绑定接口
+        struct sockaddr_can addr = new struct_sockaddr_can();
+        addr.can_ifindex = getInterfaceIndex(device);
+        
+        if (bind(sock, addr, sizeof(struct_sockaddr_can)) < 0) {
+            close(sock);
+            return -1;
+        }
+        
+        return sock;
+    }
+    
+    @SimpleFunction(description = "Send CAN frame")
+    public void Send(final int canId, final List<byte> data) {
+        new Thread(() -> {
+            try {
+                if (socketFd < 0) {
+                    form.runOnUiThread(() -> SendFailure("CAN not opened"));
+                    return;
+                }
+                
+                byte[] frame = buildCANFrame(canId, false, data);
+                int result = write(socketFd, frame, frame.length);
+                
+                if (result > 0) {
+                    form.runOnUiThread(() -> SendSuccess(canId));
+                } else {
+                    form.runOnUiThread(() -> SendFailure("Write failed"));
+                }
+            } catch (Exception e) {
+                form.runOnUiThread(() -> SendFailure(e.getMessage()));
+            }
+        }).start();
+    }
+    
+    private byte[] buildCANFrame(int canId, boolean extended, List<byte> data) {
+        // CAN frame structure for SocketCAN
+        // struct can_frame {
+        //     can_id_t can_id;  // 32-bit
+        //     __u8 dlc;         // data length code
+        //     __u8 data[8];     // data
+        // }
+        
+        ByteBuffer buffer = ByteBuffer.allocate(16);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        
+        int id = canId;
+        if (extended) id |= CAN_EFF_FLAG;
+        id |= CAN_RTR_FLAG; // Data frame (not RTR)
+        
+        buffer.putInt(id);
+        buffer.put((byte)data.size());
+        
+        for (int i = 0; i < 8; i++) {
+            if (i < data.size()) {
+                buffer.put(data.get(i));
+            } else {
+                buffer.put((byte)0);
+            }
+        }
+        
+        return buffer.array();
+    }
+    
+    private void startReceiveThread() {
+        new Thread(() -> {
+            byte[] buffer = new byte[16];
+            
+            while (socketFd >= 0) {
+                try {
+                    int nbytes = read(socketFd, buffer, buffer.length);
+                    
+                    if (nbytes > 0) {
+                        ByteBuffer bb = ByteBuffer.wrap(buffer);
+                        bb.order(ByteOrder.LITTLE_ENDIAN);
+                        
+                        int canId = bb.getInt() & 0x1FFFFFFF;
+                        boolean extended = (buffer[0] & 0x80) != 0;
+                        int dlc = bb.get() & 0x0F;
+                        
+                        List<Byte> data = new ArrayList<>();
+                        for (int i = 0; i < dlc; i++) {
+                            data.add(bb.get());
+                        }
+                        
+                        final int fCanId = canId;
+                        final List<Byte> fData = data;
+                        form.runOnUiThread(() -> FrameReceived(fCanId, fData));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Receive error", e);
+                    break;
+                }
+            }
+        }).start();
+    }
+    
+    @SimpleFunction(description = "Send OBD-II request")
+    public void SendOBDRequest(final int mode, final int pid) {
+        // 构建OBD请求帧
+        // 0x7DF是OBD广播地址
+        List<Byte> data = new ArrayList<>();
+        data.add((byte)0x02);  // 长度
+        data.add((byte)mode);   // 模式
+        data.add((byte)pid);   // PID
+        data.add((byte)0x00);  // 填充
+        data.add((byte)0x00);
+        data.add((byte)0x00);
+        data.add((byte)0x00);
+        data.add((byte)0x00);
+        
+        Send(0x7DF, data);
+    }
+    
+    @SimpleFunction(description = "Close CAN interface")
+    public void Close() {
+        try {
+            if (socketFd >= 0) {
+                close(socketFd);
+                socketFd = -1;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Close error", e);
+        }
+    }
+    
+    // Events
+    @SimpleEvent
+    public void DeviceOpenedSuccess() {}
+    
+    @SimpleEvent
+    public void DeviceOpenedFailure(String error) {}
+    
+    @SimpleEvent
+    public void FrameReceived(int canId, List<Byte> data) {}
+    
+    @SimpleEvent
+    public void SendSuccess(int canId) {}
+    
+    @SimpleEvent
+    public void SendFailure(String error) {}
+    
+    @SimpleEvent
+    public void BusError(String error) {}
+}
+```
+
+### 6.3 App Inventor使用示例
+
+```
+当 Screen1.初始化 时
+  设置 CANBus1.BaudRate = 500000
+  设置 CANBus1.DevicePath = "/dev/vcan0"
+
+当 Button_Open.被点击 时
+  调用 CANBus1.打开()
+
+当 CANBus1.设备打开成功() 时
+  调用 Notifier1.显示消息("CAN总线已打开")
+
+当 CANBus1.设备打开失败(错误) 时
+  调用 Notifier1.显示消息("打开失败: " + 错误)
+
+当 Button_ReadRPM.被点击 时
+  // 发送OBD请求：模式1，PID=0x0C(发动机转速)
+  调用 CANBus1.发送OBD请求(模式: 1, PID: 16#0C)
+
+当 CANBus1.帧接收(ID, 数据) 时
+  // 解析OBD响应
+  如果 ID = 0x7E8 且 获取列表项目(数据, 2) = 16#41 则
+    设置 全局变量 PID = 获取列表项目(数据, 3)
+    
+    如果 全局变量 PID = 16#0C 则
+      // 发动机转速
+      设置 全局变量 高字节 = 获取列表项目(数据, 4)
+      设置 全局变量 低字节 = 获取列表项目(数据, 5)
+      设置 全局变量 转速 = (高字节 * 256 + 低字节) / 4
+      设置 Label_RPM.文本 = "转速: " + 全局变量 转速 + " RPM"
+    否则 如果 全局变量 PID = 16#0D 则
+      // 车速
+      设置 全局变量 车速 = 获取列表项目(数据, 4)
+      设置 Label_Speed.文本 = "车速: " + 全局变量 车速 + " km/h"
+    如果结束
+  如果结束
+
+当 Button_SendCustom.被点击 时
+  // 发送自定义CAN帧
+  设置 全局变量 自定义数据 = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]
+  调用 CANBus1.发送(ID: 16#100, 数据: 全局变量 自定义数据)
+
+当 CANBus1.发送成功(ID) 时
+  调用 Notifier1.显示消息("发送成功 ID: 0x" + 转十六进制(ID))
+
+当 Button_Close.被点击 时
+  调用 CANBus1.关闭()
+```
+
+---
+
+## 七、汽车诊断案例
+
+### 7.1 读取多个传感器
+
+```
+初始化全局变量 OBD_PIDS = [
+  {"PID": 16#04, "名称": "发动机负载", "单位": "%"},
+  {"PID": 16#05, "名称": "冷却液温度", "单位": "°C"},
+  {"PID": 16#0C, "名称": "发动机转速", "单位": "RPM"},
+  {"PID": 16#0D, "名称": "车速", "单位": "km/h"}
+]
+
+当 Button_ReadAll.被点击 时
+  对于 每个 PID数据 在 全局变量 OBD_PIDS 中
+    设置 全局变量 PID = 获取键的值(PID数据, "PID", 0)
+    调用 CANBus1.发送OBD请求(模式: 1, PID: 全局变量 PID)
+    调用 时钟1.等待(毫秒: 100)
+  循环结束
+
+过程 更新显示(名称, 值, 单位)
+  设置 Label_xxx.文本 = 名称 + ": " + 值 + " " + 单位
+过程结束
+```
+
+### 7.2 解析传感器值
+
+```
+过程 解析OBD数据(PID, 数据字节)
+  如果 PID = 16#04 则
+    // 发动机负载: A * 100 / 255
+    返回 向下取整(获取列表项目(数据字节, 1) * 100 / 255)
+  否则 如果 PID = 16#05 则
+    // 冷却液温度: A - 40
+    返回 获取列表项目(数据字节, 1) - 40
+  否则 如果 PID = 16#0C 则
+    // 发动机转速: (A*256 + B) / 4
+    设置 全局变量 A = 获取列表项目(数据字节, 1)
+    设置 全局变量 B = 获取列表项目(数据字节, 2)
+    返回 (A * 256 + B) / 4
+  否则 如果 PID = 16#0D 则
+    // 车速: A
+    返回 获取列表项目(数据字节, 1)
+  否则
+    返回 0
+  如果结束
+过程结束
+```
+
+---
+
+## 八、Android CAN硬件要求
+
+### 8.1 CAN适配器
+
+| 类型 | 接口 | 说明 |
+|------|------|------|
+| USB-CAN | USB OTG | 最常用 |
+| 蓝牙CAN | 蓝牙 | 无线连接 |
+| WiFi-CAN | WiFi | 远程诊断 |
+
+### 8.2 Android要求
+
+- Android 5.0+
+- USB OTG支持
+- ROOT权限（部分功能）
+
+### 8.3 推荐硬件
+
+| 产品 | 接口 | 价格 |
+|------|------|------|
+| Lawicel CANUSB | USB | ¥300-500 |
+| Seeed CAN Shield | Arduino | ¥100-200 |
+| Peak PCAN | USB | ¥1000+ |
+
+---
+
+## 九、常见问题
+
+### 9.1 总线关闭
+
+**原因**：错误帧过多  
+**解决**：
+- 检查波特率匹配
+- 检查终端电阻
+- 检查线路质量
+
+### 9.2 无法接收
+
+**检查项**：
+- 波特率配置
+- ID过滤器设置
+- 设备是否打开
+
+### 9.3 数据错误
+
+**原因**：总线干扰  
+**解决**：
+- 使用屏蔽双绞线
+- 正确接地
+- 添加终端电阻
+
+---
+
+## 十、扩展下载
+
+[CANBus扩展.aix](https://www.fun123.cn) - 待发布
+
+---
+
+## 附录：CAN FD简介
+
+### CAN FD vs CAN 2.0
+
+| 特性 | CAN 2.0 | CAN FD |
+|------|---------|--------|
+| 波特率 | ≤1Mbps | ≤8Mbps |
+| 数据长度 | 8字节 | 64字节 |
+| 帧格式 | 固定 | 可变 |
+| 兼容性 | - | 可与传统CAN混用 |
+
+### CAN FD数据帧
+
+```
+┌────────┬────┬─────┬─────────────────┬────┬────┬────────┬────────┬────────┐
+│  SOF   │ ID1│FDF │     ID2         │BRS │ESI │  DLC   │ DATA   │ CRC    │
+│  1位   │11位│1位  │     18位        │1位 │1位 │ 4位    │ 0-64B  │21/17位 │
+└────────┴────┴─────┴─────────────────┴────┴────┴────────┴────────┴────────┘
+```
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-30  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

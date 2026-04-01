@@ -1,0 +1,200 @@
+---
+title: App Inventor 2 视频播放器完整教程
+description: 当 Screen1.初始化 时 // 播放本地视频 设置 VideoPlayer1.Source = "video.mp4"
+---
+
+
+# App Inventor 2 视频播放器完整教程
+
+---
+
+## 一、VideoPlayer组件
+
+| 属性 | 说明 | 默认值 |
+|------|------|--------|
+| Source | 视频来源（本地/URL） | 空 |
+| FullScreen | 全屏模式 | 假 |
+| Volume | 音量（0-100） | 50 |
+
+| 方法 | 说明 |
+|------|------|
+| Start() | 开始播放 |
+| Pause() | 暂停 |
+| Stop() | 停止 |
+| SeekTo(ms) | 跳转到指定位置 |
+| GetDuration() | 获取总时长 |
+
+---
+
+## 二、基础播放
+
+```
+当 Screen1.初始化 时
+  // 播放本地视频
+  设置 VideoPlayer1.Source = "video.mp4"
+  
+  // 或播放网络视频
+  // 设置 VideoPlayer1.Source = "http://example.com/video.mp4"
+
+当 Button_Play.被点击 时
+  调用 VideoPlayer1.Start()
+
+当 Button_Pause.被点击 时
+  调用 VideoPlayer1.Pause()
+
+当 Button_Stop.被点击 时
+  调用 VideoPlayer1.Stop()
+
+当 VideoPlayer1.Completed() 时
+  调用 Notifier1.显示消息("播放完成")
+```
+
+---
+
+## 三、自定义控制栏
+
+```
+初始化全局变量 总时长 = 0
+初始化全局变量 正在播放 = 假
+
+当 Screen1.初始化 时
+  调用 时钟1.开启定时器(间隔: 500)
+
+当 时钟1.计时 时
+  如果 全局变量 正在播放 = 真 则
+    设置 全局变量 当前位置 = VideoPlayer1.CurrentPosition
+    设置 全局变量 总时长 = VideoPlayer1.Duration
+    
+    如果 全局变量 总时长 > 0 则
+      设置 Slider_Progress.值 = 全局变量 当前位置 * 100 / 全局变量 总时长
+    如果结束
+    
+    设置 Label_Time.文本 = 调用 格式化时间(全局变量 当前位置) + " / " + 调用 格式化时间(全局变量 总时长)
+  如果结束
+
+过程 格式化时间(毫秒)
+  设置 全局变量 总秒 = 向下取整(毫秒 / 1000)
+  设置 全局变量 分 = 向下取整(全局变量 总秒 / 60)
+  设置 全局变量 秒 = 全局变量 总秒 mod 60
+  返回 调用 补零(全局变量 分) + ":" + 调用 补零(全局变量 秒)
+过程结束
+
+过程 补零(数字)
+  如果 数字 < 10 则
+    返回 "0" + 数字
+  否则
+    返回 "" + 数字
+  如果结束
+过程结束
+
+当 Button_PlayPause.被点击 时
+  如果 全局变量 正在播放 = 假 则
+    调用 VideoPlayer1.Start()
+    设置 全局变量 正在播放 = 真
+    设置 Button_PlayPause.文本 = "⏸"
+  否则
+    调用 VideoPlayer1.Pause()
+    设置 全局变量 正在播放 = 假
+    设置 Button_PlayPause.文本 = "▶"
+  如果结束
+
+当 Slider_Progress.位置改变 时
+  如果 全局变量 总时长 > 0 则
+    设置 全局变量 目标位置 = 向下取整(Slider_Progress.值 * 全局变量 总时长 / 100)
+    调用 VideoPlayer1.SeekTo(全局变量 目标位置)
+  如果结束
+
+当 Slider_Volume.位置改变 时
+  设置 VideoPlayer1.Volume = Slider_Volume.值
+```
+
+---
+
+## 四、全屏播放
+
+```
+当 Button_Fullscreen.被点击 时
+  设置 VideoPlayer1.FullScreen = 真
+
+当 VideoPlayer1.FullScreenChanged(全屏状态) 时
+  如果 全屏状态 = 真 则
+    // 隐藏控制栏
+    设置 HorizontalArrangement_Controls.可见 = 假
+  否则
+    // 显示控制栏
+    设置 HorizontalArrangement_Controls.可见 = 真
+  如果结束
+```
+
+---
+
+## 五、播放列表
+
+```
+初始化全局变量 播放列表 = [
+  {"title": "视频1", "url": "http://example.com/v1.mp4"},
+  {"title": "视频2", "url": "http://example.com/v2.mp4"},
+  {"title": "视频3", "url": "http://example.com/v3.mp4"}
+]
+初始化全局变量 当前索引 = 1
+
+过程 播放视频(索引)
+  设置 全局变量 当前索引 = 索引
+  设置 全局变量 视频信息 = 获取列表项目(全局变量 播放列表, 索引)
+  
+  设置 VideoPlayer1.Source = 获取键的值(全局变量 视频信息, "url", "")
+  调用 VideoPlayer1.Start()
+  
+  设置 Label_Title.文本 = 获取键的值(全局变量 视频信息, "title", "")
+  设置 Label_Index.文本 = 索引 + "/" + 获取列表长度(全局变量 播放列表)
+
+当 VideoPlayer1.Completed() 时
+  // 自动播放下一个
+  如果 全局变量 当前索引 < 获取列表长度(全局变量 播放列表) 则
+    调用 播放视频(全局变量 当前索引 + 1)
+  如果结束
+
+当 Button_Next.被点击 时
+  如果 全局变量 当前索引 < 获取列表长度(全局变量 播放列表) 则
+    调用 播放视频(全局变量 当前索引 + 1)
+  如果结束
+
+当 Button_Prev.被点击 时
+  如果 全局变量 当前索引 > 1 则
+    调用 播放视频(全局变量 当前索引 - 1)
+  如果结束
+```
+
+---
+
+## 六、倍速播放
+
+```
+// 需要VideoPlayer扩展支持
+当 Spinner_Speed.选中项改变 时
+  设置 全局变量 速度 = 文本转数字(Spinner_Speed.选中项)
+  调用 VideoPlayerExtension1.设置播放速度(全局变量 速度)
+
+// 速度选项: 0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

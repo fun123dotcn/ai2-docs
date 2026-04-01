@@ -1,0 +1,392 @@
+---
+title: App Inventor iOS Companion完整指南
+description: ❌ 不支持： - 所有扩展（.aix） - File组件的部分路径 - 第三方Launchers - 系统级后台服务
+---
+
+
+# App Inventor iOS Companion完整指南
+
+---
+
+## 一、iOS Companion简介
+
+### 1.1 版本信息
+
+```
+最新版本：2.78（2026年3月）
+支持iOS：14.0+
+支持设备：iPhone、iPad
+
+获取方式：
+- App Store搜索 "MIT App Inventor"
+- 或访问官网下载
+```
+
+### 1.2 与Android Companion对比
+
+| 功能 | Android | iOS | 说明 |
+|------|---------|-----|------|
+| 界面 | ✅ | ✅ | 完全一致 |
+| 组件 | ✅ | ⚠️ | 少数不支持 |
+| 扩展 | ✅ | ❌ | 暂不支持 |
+| 蓝牙 | ✅ | ✅ | BLE支持 |
+| GPS | ✅ | ✅ | 完全支持 |
+| 文件 | ✅ | ⚠️ | 部分限制 |
+
+---
+
+## 二、iOS与Android差异
+
+### 2.1 不支持的功能
+
+```
+❌ 不支持：
+- 所有扩展（.aix）
+- File组件的部分路径
+- 第三方Launchers
+- 系统级后台服务
+```
+
+### 2.2 功能差异
+
+| 组件/功能 | Android | iOS | 差异说明 |
+|-----------|---------|-----|---------|
+| Texting | ✅ | ⚠️ | iOS无直接短信API |
+| Phone Call | ✅ | ❌ | 不支持 |
+| SpeechRecognizer | ✅ | ✅ | 完全支持 |
+| TextToSpeech | ✅ | ✅ | 完全支持 |
+| Camera | ✅ | ✅ | 完全支持 |
+| LocationSensor | ✅ | ✅ | 完全支持 |
+| BluetoothClient | ✅ | ❌ | 使用BluetoothLE |
+| BluetoothLE | ✅ | ✅ | 完全支持 |
+| ContactPicker | ✅ | ✅ | 完全支持 |
+| TinyDB | ✅ | ✅ | 完全支持 |
+| CloudDB | ✅ | ✅ | 完全支持 |
+
+### 2.3 权限差异
+
+```
+Android权限：
+- 在Manifest声明
+- 运行时请求
+- 可撤销
+
+iOS权限：
+- 在Info.plist声明
+- 首次使用时请求
+- 用户可随时在设置中撤销
+```
+
+---
+
+## 三、iOS开发最佳实践
+
+### 3.1 跨平台兼容性检查
+
+```
+过程 检查iOS兼容性(功能列表)
+  设置 全局变量 不兼容 = 创建空列表()
+  
+  对于 每个 功能 在 功能列表 中
+    如果 功能 = "扩展" 则
+      添加项目到列表(全局变量 不兼容, "扩展在iOS不支持")
+    否则 如果 功能 = "短信" 则
+      添加项目到列表(全局变量 不兼容, "短信在iOS受限")
+    否则 如果 功能 = "蓝牙SPP" 则
+      添加项目到列表(全局变量 不兼容, "请使用BluetoothLE代替")
+    如果结束
+  循环结束
+  
+  如果 获取列表长度(全局变量 不兼容) > 0 则
+    调用 Notifier1.显示消息("以下功能在iOS不支持:\n" + 文本合并(全局变量 不兼容, "\n"))
+  如果结束
+过程结束
+```
+
+### 3.2 iOS适配代码
+
+```
+当 Screen1.初始化 时
+  设置 全局变量 是iOS = 调用 检测平台()
+
+过程 检测平台
+  // 通过设备信息判断
+  设置 全局变量 平台 = 调用 设备信息1.获取属性("platform")
+  返回 文本包含(全局变量 平台, "iOS")
+过程结束
+
+过程 iOS替代方案(功能)
+  如果 功能 = "短信" 则
+    // iOS使用mailto:替代
+    调用 打开邮件("13800138000")
+  否则 如果 功能 = "蓝牙SPP" 则
+    // 改用BLE
+    调用 初始化BLE()
+  如果结束
+过程结束
+
+过程 打开邮件(号码)
+  调用 ActivityStarter1.StartActivity()
+  设置 ActivityStarter1.Action = "android.intent.action.SENDTO"
+  设置 ActivityStarter1.DataUri = "sms:" + 号码
+```
+
+### 3.3 文件路径差异
+
+```
+Android路径：
+- /sdcard/...
+- /storage/emulated/0/...
+- ASD: /storage/emulated/0/Android/data/...
+
+iOS路径：
+- 沙盒目录：Documents/
+- 临时目录：tmp/
+- 使用File组件的默认路径
+
+代码适配：
+过程 获取兼容路径(文件名)
+  如果 调用 检测平台() = 真 则
+    返回 "/Documents/" + 文件名
+  否则
+    返回 "/sdcard/" + 文件名
+  如果结束
+过程结束
+```
+
+---
+
+## 四、蓝牙开发指南
+
+### 4.1 iOS蓝牙架构
+
+```
+iOS只有BLE，不支持经典蓝牙SPP
+
+架构对比：
+┌─────────────────────────────────────┐
+│ Android                              │
+│ ┌─────────┐    ┌─────────┐          │
+│ │ Classic │    │   BLE   │          │
+│ │ Bluetooth│    │ Bluetooth│          │
+│ └────┬────┘    └────┬────┘          │
+│      │              │                │
+│      ▼              ▼                │
+│ ┌─────────────────────────┐          │
+│ │    BluetoothClient     │          │
+│ │     BluetoothLE        │          │
+│ └─────────────────────────┘          │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│ iOS                                  │
+│ ┌─────────┐    ┌─────────┐          │
+│ │ Classic │ ✗  │   BLE   │          │
+│ │ Bluetooth│    │ Bluetooth│          │
+│ └─────────┘    └────┬────┘          │
+│                     ▼                │
+│              ┌───────────┐          │
+│              │BluetoothLE│          │
+│              └───────────┘          │
+└─────────────────────────────────────┘
+```
+
+### 4.2 BLE连接代码
+
+```
+// iOS BLE完整示例
+初始化全局变量 BLE服务UUID = "0000FFE0-0000-1000-8000-00805F9B34FB"
+初始化全局变量 BLE特征UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"
+
+当 Screen1.初始化 时
+  设置 BluetoothLE1.扫描超时 = 10000
+
+当 Button_扫描.被点击 时
+  调用 BluetoothLE1.StartScanning()
+  调用 Notifier1.显示消息("扫描中...")
+
+当 BluetoothLE1.DeviceFound(设备名, 地址, RSSI, 广播) 时
+  添加项目到列表(全局变量 设备列表, 设备名 + " | RSSI:" + RSSI)
+  设置 ListPicker1.Elements = 全局变量 设备列表
+
+当 ListPicker1.AfterPicking() 时
+  设置 全局变量 选中地址 = 调用 提取地址(ListPicker1.Selection)
+  调用 BluetoothLE1.Connect(全局变量 选中地址)
+
+当 BluetoothLE1.Connected() 时
+  调用 Notifier1.显示消息("连接成功！")
+  // 发现服务
+  调用 BluetoothLE1.DiscoverServices()
+
+当 BluetoothLE1.ServicesDiscovered(服务列表) 时
+  调用 Notifier1.显示消息("发现" + 获取列表长度(服务列表) + "个服务")
+
+当 BluetoothLE1.CharacteristicRead(值, 服务, 特征) 时
+  设置 Label_Data.文本 = "收到: " + 值
+```
+
+### 4.3 BLE数据处理
+
+```
+当 BluetoothLE1.CharacteristicChanged(值, 服务, 特征) 时
+  // 处理接收到的数据
+  设置 全局变量 接收数据 = 值
+  
+  // 解析数据（根据实际协议）
+  调用 解析BLE数据(全局变量 接收数据)
+
+过程 解析BLE数据(原始数据)
+  // 示例：解析温度数据
+  设置 全局变量 字节列表 = 文本分割(原始数据, ",")
+  
+  如果 获取列表长度(全局变量 字节列表) ≥ 2 则
+    设置 全局变量 温度 = 文本转数字(获取列表项目(全局变量 字节列表, 1))
+    设置 全局变量 湿度 = 文本转数字(获取列表项目(全局变量 字节列表, 2))
+    
+    设置 Label_Temp.文本 = "温度: " + 全局变量 温度 + "℃"
+    设置 Label_Hum.文本 = "湿度: " + 全局变量 湿度 + "%"
+  如果结束
+过程结束
+```
+
+---
+
+## 五、测试与调试
+
+### 5.1 iOS测试清单
+
+```
+测试前检查：
+□ iOS Companion已更新到最新版本
+□ iOS版本 ≥ 14.0
+□ 测试设备已配对（蓝牙）
+□ 所需权限已授予
+
+测试项目：
+□ 界面布局正常显示
+□ 组件功能正常
+□ 数据持久化正常
+□ 蓝牙连接正常
+□ 网络请求正常
+□ 文件读写正常
+```
+
+### 5.2 常见问题排查
+
+```
+问题1：无法连接蓝牙设备
+解决方案：
+1. 确认设备已开启蓝牙
+2. 检查UUID是否正确
+3. 确认设备未被其他设备连接
+4. 重启蓝牙
+
+问题2：权限被拒绝
+解决方案：
+1. 设置 → 应用 → MIT App Inventor
+2. 重新开启权限
+3. 完全关闭后重新打开应用
+
+问题3：应用闪退
+解决方案：
+1. 更新到最新Companion
+2. 检查是否使用了不支持的功能
+3. 查看控制台日志
+```
+
+---
+
+## 六、发布iOS应用
+
+### 6.1 构建选项
+
+```
+App Inventor导出选项：
+1. APK（仅Android）
+2. AAB（仅Android）
+3. iOS安装包（需Apple开发者账号）
+
+iOS构建要求：
+- Apple开发者账号（付费）
+- App ID配置
+- 证书和描述文件
+```
+
+### 6.2 替代方案
+
+```
+如果没有Apple开发者账号：
+
+方案1：TestFlight
+- 需要开发者账号
+- 可测试最多10000人
+
+方案2：Ad Hoc
+- 需要开发者账号
+- 最多100台设备
+
+方案3：企业证书
+- 需要企业开发者账号
+- 无设备限制
+
+方案4：直接安装（测试）
+- 仅限已配对的测试设备
+- 无需发布账号
+```
+
+---
+
+## 七、总结
+
+### 7.1 iOS开发要点
+
+```
+1. 避免使用扩展
+   iOS不支持任何扩展
+
+2. 使用BLE代替蓝牙SPP
+   BluetoothClient在iOS不可用
+
+3. 注意文件路径
+   iOS沙盒机制限制文件访问
+
+4. 测试iOS兼容性
+   开发时使用iOS Companion测试
+
+5. 关注GitHub更新
+   iOS支持持续改进
+```
+
+### 7.2 资源链接
+
+```
+iOS Companion下载：
+https://apps.apple.com/app/id1577037866
+
+官方文档：
+https://appinventor.mit.edu/ios
+
+问题反馈：
+https://github.com/mit-cml/appinventor-sources/issues
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

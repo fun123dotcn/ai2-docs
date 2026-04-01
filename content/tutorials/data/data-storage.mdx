@@ -1,0 +1,271 @@
+---
+title: App Inventor 2 数据存储进阶教程
+description: // 使用SQLite扩展 当 Screen1.初始化 时 // 打开/创建数据库 调用 SQLite1.打开数据库("myapp.db")
+---
+
+
+# App Inventor 2 数据存储进阶教程
+
+---
+
+## 一、XML解析
+
+### 1.1 简单XML解析
+
+```
+// XML示例
+// <users>
+//   <user id="1"><name>张三</name><age>18</age></user>
+//   <user id="2"><name>李四</name><age>20</age></user>
+// </users>
+
+过程 解析XML标签(XML文本, 标签名)
+  设置 全局变量 开始标签 = "<" + 标签名 + ">"
+  设置 全局变量 结束标签 = "</" + 标签名 + ">"
+  
+  设置 全局变量 开始位置 = 文本查找(XML文本, 全局变量 开始标签) + 文本长度(全局变量 开始标签)
+  设置 全局变量 结束位置 = 文本查找(XML文本, 全局变量 结束标签) - 1
+  
+  如果 全局变量 开始位置 > 0 且 全局变量 结束位置 > 0 则
+    返回 文本取部分(XML文本, 全局变量 开始位置, 全局变量 结束位置)
+  否则
+    返回 ""
+  如果结束
+过程结束
+
+// 使用示例
+设置 全局变量 XML = "<user><name>张三</name><age>18</age></user>"
+设置 全局变量 姓名 = 调用 解析XML标签(全局变量 XML, "name")  // "张三"
+设置 全局变量 年龄 = 调用 解析XML标签(全局变量 XML, "age")   // "18"
+```
+
+### 1.2 解析XML属性
+
+```
+过程 解析XML属性(XML文本, 标签名, 属性名)
+  // 找到标签
+  设置 全局变量 标签开始 = 文本查找(XML文本, "<" + 标签名)
+  如果 全局变量 标签开始 = 0 则
+    返回 ""
+  如果结束
+  
+  // 找到属性
+  设置 全局变量 属性开始 = 文本查找(XML文本, 属性名 + "=\"", 全局变量 标签开始)
+  如果 全局变量 属性开始 = 0 则
+    返回 ""
+  如果结束
+  
+  设置 全局变量 值开始 = 全局变量 属性开始 + 文本长度(属性名) + 2
+  设置 全局变量 值结束 = 文本查找(XML文本, "\"", 全局变量 值开始) - 1
+  
+  返回 文本取部分(XML文本, 全局变量 值开始, 全局变量 值结束)
+过程结束
+
+// 解析 <user id="1"> 中的 id
+设置 全局变量 ID = 调用 解析XML属性(全局变量 XML, "user", "id")  // "1"
+```
+
+---
+
+## 二、SQLite数据库
+
+```
+// 使用SQLite扩展
+当 Screen1.初始化 时
+  // 打开/创建数据库
+  调用 SQLite1.打开数据库("myapp.db")
+  
+  // 创建表
+  调用 SQLite1.执行SQL(
+    "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER, score REAL)"
+  )
+
+// 插入数据
+过程 插入用户(姓名, 年龄, 分数)
+  调用 SQLite1.执行SQL(
+    "INSERT INTO users (name, age, score) VALUES ('" + 姓名 + "', " + 年龄 + ", " + 分数 + ")"
+  )
+过程结束
+
+// 查询数据
+过程 查询所有用户
+  调用 SQLite1.查询(
+    "SELECT * FROM users ORDER BY id DESC"
+  )
+过程结束
+
+当 SQLite1.查询结果(结果列表) 时
+  设置 全局变量 用户列表 = 结果列表
+  
+  // 显示结果
+  设置 全局变量 显示文本 = ""
+  对于 每个 行 在 全局变量 用户列表 中
+    设置 全局变量 ID = 获取列表项目(行, 1)
+    设置 全局变量 姓名 = 获取列表项目(行, 2)
+    设置 全局变量 年龄 = 获取列表项目(行, 3)
+    设置 全局变量 分数 = 获取列表项目(行, 4)
+    
+    设置 全局变量 显示文本 = 全局变量 显示文本 + 
+      全局变量 ID + ". " + 全局变量 姓名 + " (" + 全局变量 年龄 + "岁) 分数:" + 全局变量 分数 + "\n"
+  循环结束
+  
+  设置 Label_Result.文本 = 全局变量 显示文本
+
+// 更新数据
+过程 更新用户分数(用户ID, 新分数)
+  调用 SQLite1.执行SQL(
+    "UPDATE users SET score = " + 新分数 + " WHERE id = " + 用户ID
+  )
+过程结束
+
+// 删除数据
+过程 删除用户(用户ID)
+  调用 SQLite1.执行SQL(
+    "DELETE FROM users WHERE id = " + 用户ID
+  )
+过程结束
+
+// 搜索
+过程 搜索用户(关键词)
+  调用 SQLite1.查询(
+    "SELECT * FROM users WHERE name LIKE '%" + 关键词 + "%'"
+  )
+过程结束
+```
+
+---
+
+## 三、UUID生成
+
+```
+// 方法1：使用时间戳+随机数
+过程 生成UUID()
+  设置 全局变量 时间戳 = 调用 时钟1.获取时间毫秒()
+  设置 全局变量 随机数 = 随机整数(100000, 999999)
+  返回 全局变量 时间戳 + "-" + 全局变量 随机数
+过程结束
+
+// 方法2：UUID格式（8-4-4-4-12）
+过程 生成标准UUID()
+  过程 随机十六进制(位数)
+    设置 全局变量 结果 = ""
+    对于 i 从 1 到 位数
+      设置 全局变量 随机值 = 随机整数(0, 15)
+      设置 全局变量 结果 = 全局变量 结果 + 文本取部分("0123456789abcdef", 全局变量 随机值 + 1, 1)
+    循环结束
+    返回 全局变量 结果
+  过程结束
+  
+  返回 调用 随机十六进制(8) + "-" + 
+        调用 随机十六进制(4) + "-" + 
+        "4" + 调用 随机十六进制(3) + "-" + 
+        调用 随机十六进制(4) + "-" + 
+        调用 随机十六进制(12)
+过程结束
+
+// 方法3：使用设备ID
+过程 获取设备UUID()
+  // 使用Android设备ID（需要权限）
+  返回 调用 PhoneStatus1.AndroidID()
+过程结束
+```
+
+---
+
+## 四、文件路径管理
+
+```
+// 常用路径常量
+初始化全局变量 路径_下载 = "/sdcard/Download/"
+初始化全局变量 路径_图片 = "/sdcard/Pictures/"
+初始化全局变量 路径_应用 = "/sdcard/Android/data/包名/files/"
+初始化全局变量 路径_缓存 = "/sdcard/Android/data/包名/cache/"
+
+// 创建应用目录
+当 Screen1.初始化 时
+  调用 确保目录存在(全局变量 路径_应用)
+  调用 确保目录存在(全局变量 路径_缓存)
+
+过程 确保目录存在(路径)
+  如果 调用 文件扩展1.目录是否存在(路径) = 假 则
+    调用 文件扩展1.创建目录(路径)
+  如果结束
+过程结束
+
+// 生成唯一文件名
+过程 生成文件名(前缀, 扩展名)
+  设置 全局变量 时间戳 = 调用 时钟1.格式化时间("yyyyMMdd_HHmmss")
+  返回 前缀 + "_" + 全局变量 时间戳 + "." + 扩展名
+过程结束
+
+// 示例
+设置 全局变量 图片文件名 = 调用 生成文件名("photo", "jpg")
+// 结果: "photo_20260330_191500.jpg"
+
+设置 全局变量 完整路径 = 全局变量 路径_图片 + 全局变量 图片文件名
+// 结果: "/sdcard/Pictures/photo_20260330_191500.jpg"
+```
+
+---
+
+## 五、电子表格（Google Sheets）
+
+```
+// 通过Google Sheets API读写数据
+初始化全局变量 表格ID = "YOUR_SPREADSHEET_ID"
+初始化全局变量 API密钥 = "YOUR_API_KEY"
+
+// 读取数据
+过程 读取表格数据(工作表名, 范围)
+  设置 全局变量 URL = "https://sheets.googleapis.com/v4/spreadsheets/" + 
+    全局变量 表格ID + "/values/" + 工作表名 + "!" + 范围 + 
+    "?key=" + 全局变量 API密钥
+  
+  调用 Web1.发送文本请求(网址: 全局变量 URL)
+过程结束
+
+当 Web1.收到文本响应(响应文本) 时
+  设置 全局变量 数据 = 调用 JSON.文本转字典(响应文本)
+  设置 全局变量 行列表 = 获取键的值(全局变量 数据, "values", [])
+  
+  对于 每个 行 在 全局变量 行列表 中
+    // 处理每行数据
+    设置 全局变量 列A = 获取列表项目(行, 1)
+    设置 全局变量 列B = 获取列表项目(行, 2)
+  循环结束
+
+// 写入数据（需要OAuth认证）
+过程 写入表格数据(工作表名, 范围, 数据列表)
+  设置 全局变量 URL = "https://sheets.googleapis.com/v4/spreadsheets/" + 
+    全局变量 表格ID + "/values/" + 工作表名 + "!" + 范围 + 
+    ":append?valueInputOption=RAW&key=" + 全局变量 API密钥
+  
+  设置 全局变量 请求体 = 调用 JSON.字典转文本({
+    "values": 数据列表
+  })
+  
+  调用 Web1.设置请求头([["Content-Type", "application/json"]])
+  调用 Web1.发送文本请求(网址: 全局变量 URL, 方法: "POST", 内容: 全局变量 请求体)
+过程结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

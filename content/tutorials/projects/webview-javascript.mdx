@@ -1,0 +1,458 @@
+---
+title: App Inventor 2 WebView JavaScript处理器高级教程
+description: // App Inventor → JavaScript：读取应用传入的字符串 window.AppInventor.getWebViewString()
+---
+
+
+# App Inventor 2 WebView JavaScript处理器高级教程
+
+---
+
+## 一、教程概述
+
+**作者**：Rich Interdonato（MIT Master Trainer）
+
+**功能**：将传统JavaScript代码与App Inventor应用集成
+
+**原理**：利用 WebViewer 组件内置的 App Inventor 专用函数实现双向通信
+
+**应用场景**：
+- 使用开源JavaScript库
+- 复杂字符串处理
+- 高级加密解密
+- 图片处理
+- 数据可视化
+
+---
+
+## 二、核心API
+
+### 2.1 通信函数
+
+```javascript
+// App Inventor → JavaScript：读取应用传入的字符串
+window.AppInventor.getWebViewString()
+
+// JavaScript → App Inventor：将处理结果返回应用
+window.AppInventor.setWebViewString(result)
+```
+
+### 2.2 工作流程
+
+```
+App Inventor 应用
+      │
+      ▼ 设置 WebViewString
+┌─────────────────────┐
+│   WebViewer 组件    │
+│  (加载HTML/JS文件)  │
+└─────────────────────┘
+      │
+      ▼ JavaScript处理
+┌─────────────────────┐
+│   HTML文件中的      │
+│   JavaScript代码    │
+└─────────────────────┘
+      │
+      ▼ setWebViewString
+      │
+      ▼ WebViewString 属性变化
+App Inventor 应用
+```
+
+---
+
+## 三、入门示例：文本反转
+
+### 3.1 创建HTML文件
+
+在项目中创建文件：`javascriptWebViewProcessor.html`
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebView Javascript Processor</title>
+</head>
+<body onload="processJavascript();">
+    <b>这个页面包含一个反转文本的JavaScript函数。</b>
+    <p>该JavaScript函数使用了App Inventor专用功能：
+    <i>window.AppInventor.getWebViewString()</i>，
+    用于与应用 Inventor 应用通信。</p>
+
+    <script>
+        var result = new Date().toString();
+        var appInventorInput = window.AppInventor.getWebViewString();
+        
+        function processJavascript() {
+            if (appInventorInput.length > 0) {
+                document.write("WebView 从应用接收输入:<br/>" + appInventorInput);
+                result = appInventorInput.split("").reverse().join("");
+                document.write("<p/>WebView 发送回应用:<br/>" + result);
+            } else {
+                document.write("应用尚未设置输入字符串于: <br/>" + result);
+            }
+            window.AppInventor.setWebViewString(result);
+        }
+    </script>
+</body>
+</html>
+```
+
+### 3.2 上传HTML文件
+
+1. 在 App Inventor 中打开项目
+2. 进入 Designer
+3. 在 Media 区域上传 `javascriptWebViewProcessor.html`
+
+### 3.3 Designer设置
+
+| 组件 | 名称 | 属性 |
+|------|------|------|
+| HorizontalArrangement | (默认) | |
+| TextBox | StringToBeProcessed | |
+| Button | btnProcess | Text: "处理" |
+| WebViewer | WebViewer1 | |
+| Notifier | Notifier1 | |
+| Clock | Clock1 | TimerInterval: 50 |
+
+### 3.4 积木块实现
+
+#### 变量定义
+
+```
+全局变量 processingIntervalMillis = 50
+  // 调用WebViewer的频率（毫秒）
+
+全局变量 debugMode = 真
+  // 开发模式下为真，打包后为假
+
+全局变量 currentProcessingDurationMillis = 0
+  // 当前处理耗时
+
+全局变量 maximumProcessingDurationMillis = 5000
+  // 最大等待时间（毫秒）
+```
+
+#### Screen1初始化
+
+```
+当 Screen1.初始化 时
+  如果 debugMode = 真 则
+    设置 WebViewer1.HomeUrl = 
+      "file:///mnt/sdcard/AppInventor/assets/javascriptWebViewProcessor.html"
+  否则
+    设置 WebViewer1.HomeUrl = 
+      "file:///android_asset/javascriptWebViewProcessor.html"
+  如果结束
+  
+  设置 Clock1.TimerInterval = processingIntervalMillis
+  设置 Clock1.TimerEnabled = 假
+```
+
+#### btnProcess点击事件
+
+```
+当 btnProcess.点击 时
+  // 将文本传给WebViewer
+  设置 WebViewer1.WebViewString = StringToBeProcessed.Text
+  // 重置处理计时器
+  设置 Clock1.TimerEnabled = 真
+```
+
+#### Clock1定时检查
+
+```
+当 Clock1.定时 时
+  // 检查WebView是否还在处理
+  如果 WebViewer1.WebViewString = StringToBeProcessed.Text 则
+    // 仍在处理中
+    设置 currentProcessingDurationMillis = 
+      currentProcessingDurationMillis + processingIntervalMillis
+    
+    // 检查是否超时
+    如果 currentProcessingDurationMillis >= maximumProcessingDurationMillis 则
+      设置 Clock1.TimerEnabled = 假
+      调用 Notifier1.显示消息框("处理超时，请重试")
+      设置 currentProcessingDurationMillis = 0
+    如果结束
+  否则
+    // 处理完成
+    设置 Clock1.TimerEnabled = 假
+    设置 StringToBeProcessed.Text = ""
+    设置 全局变量 处理结果 = WebViewer1.WebViewString
+    调用 Notifier1.显示消息框("结果: " + 处理结果 + "\n耗时: " + 
+      (currentProcessingDurationMillis / 1000) + "秒")
+    设置 currentProcessingDurationMillis = 0
+  如果结束
+```
+
+---
+
+## 四、高级应用：字符串加密
+
+### 4.1 Base64加密HTML
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Base64加密解密</title>
+</head>
+<body onload="process();">
+    <h2>Base64加密/解密工具</h2>
+    <script>
+        function process() {
+            var input = window.AppInventor.getWebViewString();
+            var parts = input.split("|");
+            var mode = parts[0];
+            var text = parts[1];
+            
+            var result = "";
+            
+            if (mode === "encode") {
+                result = btoa(unescape(encodeURIComponent(text)));
+            } else if (mode === "decode") {
+                result = decodeURIComponent(escape(atob(text)));
+            }
+            
+            window.AppInventor.setWebViewString(result);
+        }
+    </script>
+</body>
+</html>
+```
+
+### 4.2 App Inventor调用
+
+```
+// 加密
+当 Button_加密.点击 时
+  设置 WebViewer1.WebViewString = "encode|" + TextBox_原文.Text
+  // 等待处理...
+
+当 WebViewer1.WebViewString ≠ "" 且 不是超时 时
+  设置 TextBox_密文.Text = WebViewer1.WebViewString
+```
+
+---
+
+## 五、高级应用：MD5哈希
+
+### 5.1 MD5计算HTML
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MD5计算器</title>
+    <script src="md5.min.js"></script>
+</head>
+<body onload="calculateMD5();">
+    <script>
+        function calculateMD5() {
+            var input = window.AppInventor.getWebViewString();
+            var hash = MD5(input);
+            window.AppInventor.setWebViewString(hash);
+        }
+    </script>
+</body>
+</html>
+```
+
+### 5.2 下载MD5库
+
+从 CDN 下载 `md5.min.js` 并上传到项目：
+```
+https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/md5.min.js
+```
+
+---
+
+## 六、高级应用：图片处理
+
+### 6.1 灰度转换HTML
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>图片灰度处理</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        function processImage(base64Data) {
+            var img = new Image();
+            img.onload = function() {
+                var canvas = document.getElementById('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                var data = imageData.data;
+                
+                for (var i = 0; i < data.length; i += 4) {
+                    var avg = (data[i] + data[i+1] + data[i+2]) / 3;
+                    data[i] = avg;     // R
+                    data[i+1] = avg;   // G
+                    data[i+2] = avg;   // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                
+                // 返回Base64
+                var result = canvas.toDataURL();
+                window.AppInventor.setWebViewString(result);
+            };
+            img.src = base64Data;
+        }
+        
+        // 从App Inventor获取图片数据
+        var base64 = window.AppInventor.getWebViewString();
+        processImage(base64);
+    </script>
+</body>
+</html>
+```
+
+---
+
+## 七、高级应用：二维码生成
+
+### 7.1 二维码生成HTML
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>二维码生成器</title>
+    <script src="qrcode.min.js"></script>
+</head>
+<body>
+    <div id="qrcode"></div>
+    <script>
+        var text = window.AppInventor.getWebViewString();
+        new QRCode(document.getElementById("qrcode"), text);
+        
+        // 等待生成完成
+        setTimeout(function() {
+            var canvas = document.querySelector("#qrcode canvas");
+            if (canvas) {
+                window.AppInventor.setWebViewString(canvas.toDataURL());
+            } else {
+                window.AppInventor.setWebViewString("ERROR: 生成失败");
+            }
+        }, 100);
+    </script>
+</body>
+</html>
+```
+
+---
+
+## 八、性能优化
+
+### 8.1 处理超时
+
+```javascript
+// 在HTML中添加超时检测
+setTimeout(function() {
+    window.AppInventor.setWebViewString("TIMEOUT");
+}, 5000);
+```
+
+### 8.2 大数据处理
+
+```javascript
+// 分批处理大数据
+var batchSize = 1000;
+var position = 0;
+
+function processBatch() {
+    var end = Math.min(position + batchSize, data.length);
+    // 处理当前批次
+    position += batchSize;
+    
+    if (position < data.length) {
+        setTimeout(processBatch, 10);
+    } else {
+        window.AppInventor.setWebViewString(finalResult);
+    }
+}
+```
+
+### 8.3 异步处理
+
+```javascript
+// 使用Promise处理异步操作
+function asyncProcess(input) {
+    return new Promise(function(resolve) {
+        // 异步操作
+        someAsyncOperation(input, function(result) {
+            resolve(result);
+        });
+    });
+}
+```
+
+---
+
+## 九、常见问题
+
+### Q1: WebViewer不加载HTML？
+
+**检查**：
+- HTML文件是否上传到 Media
+- HomeUrl 路径是否正确
+- debugMode 下和打包后的路径不同
+
+### Q2: 通信失败？
+
+**检查**：
+- window.AppInventor 函数是否拼写正确
+- setWebViewString 是否在页面加载完成后调用
+- 是否有JavaScript错误
+
+### Q3: 性能慢？
+
+**优化建议**：
+- 减少定时器频率
+- 使用 WebWorker 处理大数据
+- 优化JavaScript算法
+
+---
+
+## 十、实用JavaScript库推荐
+
+| 库名 | 用途 | CDN |
+|------|------|------|
+| CryptoJS | 加密解密 | cdnjs.cloudflare.com |
+| QRCode.js | 二维码生成 | cdn.bootcdn.net |
+| Moment.js | 日期处理 | momentjs.com |
+| Chart.js | 图表绘制 | cdn.jsdelivr.net |
+| PapaParse | CSV解析 | cdnjs.cloudflare.com |
+
+---
+
+**教程作者**：ai2claw 🐝
+**来源**：MIT App Inventor 官方教程（Rich Interdonato, MIT Master Trainer）
+**创建时间**：2026-04-01
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [WebView Javascript Processor](https://appinventor.mit.edu/explore/ai2/webview-javascript) - MIT App Inventor Official Tutorial
+- [Rich Interdonato](https://community.appinventor.mit.edu/) - MIT Master Trainer
+- [App Inventor ai2.appinventor.mit.edu](https://ai2.appinventor.mit.edu) - MIT App Inventor
+
+### 版权声明
+本文档基于 MIT App Inventor 官方教程整理，版权归原作者所有：
+- MIT App Inventor 官方教程采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- Rich Interdonato 原创教程版权归作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

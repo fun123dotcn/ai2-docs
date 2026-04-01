@@ -1,0 +1,183 @@
+---
+title: "App Inventor 2 ListView自定义Item教程"
+description: "// 使用CustomListView扩展 初始化全局变量 数据列表 = [ {\"title\": \"苹果\", \"subtitle\": \"新鲜水果\", \"image\": \"apple.png\", \"price\": \"¥5.00\"},…"
+---
+
+
+# App Inventor 2 ListView自定义Item教程
+
+---
+
+## 一、ListView基础
+
+| 属性 | 说明 |
+|------|------|
+| Elements | 列表数据（文本列表） |
+| ElementsFromString | 逗号分隔的字符串 |
+| TextColor | 文字颜色 |
+| BackgroundColor | 背景颜色 |
+| FontSize | 字体大小 |
+| SelectionColor | 选中颜色 |
+
+---
+
+## 二、图文列表（ListView扩展）
+
+```
+// 使用CustomListView扩展
+初始化全局变量 数据列表 = [
+  {"title": "苹果", "subtitle": "新鲜水果", "image": "apple.png", "price": "¥5.00"},
+  {"title": "香蕉", "subtitle": "进口香蕉", "image": "banana.png", "price": "¥3.00"},
+  {"title": "橙子", "subtitle": "脐橙", "image": "orange.png", "price": "¥8.00"}
+]
+
+当 Screen1.初始化 时
+  调用 渲染列表()
+
+过程 渲染列表
+  // 清空现有内容
+  调用 VerticalScrollArrangement1.清空()
+  
+  对于 每个 项目 在 全局变量 数据列表 中
+    // 创建行容器
+    设置 全局变量 行 = 调用 HorizontalArrangement.创建组件(VerticalScrollArrangement1)
+    调用 全局变量 行.设置属性("宽度", "充满")
+    调用 全局变量 行.设置属性("高度", "80")
+    调用 全局变量 行.设置属性("背景颜色", 白色)
+    
+    // 图片
+    设置 全局变量 图片 = 调用 Image.创建组件(全局变量 行)
+    调用 全局变量 图片.设置属性("图片", 获取键的值(项目, "image", ""))
+    调用 全局变量 图片.设置属性("宽度", "70")
+    调用 全局变量 图片.设置属性("高度", "70")
+    
+    // 文字容器
+    设置 全局变量 文字容器 = 调用 VerticalArrangement.创建组件(全局变量 行)
+    调用 全局变量 文字容器.设置属性("宽度", "充满")
+    
+    // 标题
+    设置 全局变量 标题 = 调用 Label.创建组件(全局变量 文字容器)
+    调用 全局变量 标题.设置属性("文本", 获取键的值(项目, "title", ""))
+    调用 全局变量 标题.设置属性("字体大小", 16)
+    调用 全局变量 标题.设置属性("粗体", 真)
+    
+    // 副标题
+    设置 全局变量 副标题 = 调用 Label.创建组件(全局变量 文字容器)
+    调用 全局变量 副标题.设置属性("文本", 获取键的值(项目, "subtitle", ""))
+    调用 全局变量 副标题.设置属性("字体大小", 12)
+    调用 全局变量 副标题.设置属性("文字颜色", 灰色)
+    
+    // 价格
+    设置 全局变量 价格 = 调用 Label.创建组件(全局变量 行)
+    调用 全局变量 价格.设置属性("文本", 获取键的值(项目, "price", ""))
+    调用 全局变量 价格.设置属性("文字颜色", 红色)
+    调用 全局变量 价格.设置属性("字体大小", 14)
+    
+    // 分隔线
+    设置 全局变量 分隔线 = 调用 Label.创建组件(VerticalScrollArrangement1)
+    调用 全局变量 分隔线.设置属性("高度", "1")
+    调用 全局变量 分隔线.设置属性("宽度", "充满")
+    调用 全局变量 分隔线.设置属性("背景颜色", 浅灰色)
+  循环结束
+过程结束
+```
+
+---
+
+## 三、ListView多行文本
+
+```
+// 使用ListView的MainText和DetailText
+初始化全局变量 主文本列表 = ["苹果", "香蕉", "橙子"]
+初始化全局变量 副文本列表 = ["新鲜水果 ¥5", "进口香蕉 ¥3", "脐橙 ¥8"]
+
+当 Screen1.初始化 时
+  设置 ListView1.Elements = 全局变量 主文本列表
+  // 注意：标准ListView不支持副文本，需要扩展
+
+当 ListView1.AfterPicking() 时
+  设置 全局变量 选中索引 = ListView1.SelectionIndex
+  设置 全局变量 选中主文本 = 获取列表项目(全局变量 主文本列表, 全局变量 选中索引)
+  设置 全局变量 选中副文本 = 获取列表项目(全局变量 副文本列表, 全局变量 选中索引)
+  
+  调用 Notifier1.显示消息("选中: " + 全局变量 选中主文本 + "\n" + 全局变量 选中副文本)
+```
+
+---
+
+## 四、搜索过滤
+
+```
+初始化全局变量 原始列表 = ["苹果", "香蕉", "橙子", "葡萄", "西瓜", "草莓"]
+
+当 TextBox_Search.文本改变 时
+  设置 全局变量 关键词 = TextBox_Search.文本
+  
+  如果 全局变量 关键词 = "" 则
+    设置 ListView1.Elements = 全局变量 原始列表
+  否则
+    设置 全局变量 过滤结果 = 创建空列表()
+    
+    对于 每个 项目 在 全局变量 原始列表 中
+      如果 文本包含(项目, 全局变量 关键词) = 真 则
+        添加项目到列表(全局变量 过滤结果, 项目)
+      如果结束
+    循环结束
+    
+    设置 ListView1.Elements = 全局变量 过滤结果
+  如果结束
+```
+
+---
+
+## 五、滑动删除
+
+```
+初始化全局变量 滑动起始X = 0
+初始化全局变量 滑动起始Y = 0
+初始化全局变量 滑动项目索引 = 0
+
+当 ListView1.触摸开始(X, Y) 时
+  设置 全局变量 滑动起始X = X
+  设置 全局变量 滑动起始Y = Y
+
+当 ListView1.触摸结束(X, Y) 时
+  设置 全局变量 滑动距离 = 全局变量 滑动起始X - X
+  
+  如果 全局变量 滑动距离 > 100 则
+    // 向左滑动超过100px，显示删除按钮
+    调用 Notifier1.显示确认对话框(
+      消息: "确认删除 " + ListView1.Selection + "?",
+      标题: "删除",
+      按钮1文本: "删除",
+      按钮2文本: "取消"
+    )
+  如果结束
+
+当 Notifier1.选择完成(选择) 时
+  如果 选择 = "删除" 则
+    调用 删除列表项目(全局变量 数据列表, ListView1.SelectionIndex)
+    调用 渲染列表()
+  如果结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

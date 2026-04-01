@@ -1,0 +1,292 @@
+---
+title: App Inventor 2 SQLite本地数据库教程
+description: "覆盖：数据库创建、增删改查、事务、备份、多表关联"
+---
+
+
+# App Inventor 2 SQLite本地数据库教程
+
+> 覆盖：数据库创建、增删改查、事务、备份、多表关联
+
+---
+
+## 一、SQLite基础
+
+### 1.1 什么是SQLite
+
+- 嵌入式数据库，文件形式存储
+- 无需安装、零配置
+- 支持SQL语法
+- 适合移动端
+
+### 1.2 核心概念
+
+| 概念 | 说明 |
+|------|------|
+| 表 | 数据存储结构 |
+| 行 | 一条记录 |
+| 列 | 字段 |
+| 主键 | 唯一标识 |
+
+---
+
+## 二、创建数据库
+
+### 2.1 初始化
+
+```
+当 Screen1.初始化 时
+  // 创建用户表
+  调用 SQLite1.执行SQL(
+    "CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      password TEXT NOT NULL,
+      email TEXT,
+      created_at INTEGER DEFAULT (strftime('%s','now'))
+    )"
+  )
+  
+  // 创建商品表
+  调用 SQLite1.执行SQL(
+    "CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      price REAL,
+      stock INTEGER DEFAULT 0,
+      category TEXT
+    )"
+  )
+
+当 SQLite1.执行完成 时（执行结果）
+  设置 标签_状态.文本 = "数据库初始化完成"
+```
+
+---
+
+## 三、插入数据
+
+### 3.1 单条插入
+
+```
+定义 注册用户(用户名, 密码, 邮箱)
+  调用 SQLite1.执行SQL(
+    "INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+    创建列表(用户名, 密码, 邮箱)
+  )
+
+当 按钮_注册.被点击 时
+  初始化局部变量 用户名 = 文本输入框_用户名.文本
+  初始化局部变量 密码 = 文本输入框_密码.文本
+  初始化局部变量 邮箱 = 文本输入框_邮箱.文本
+  
+  调用 注册用户(用户名, 密码, 邮箱)
+
+当 SQLite1.执行完成 时（执行结果）
+  调用 对话框1.显示消息对话框("注册成功", "提示", "确定")
+```
+
+### 3.2 批量插入
+
+```
+定义 批量插入商品(商品列表)
+  对于 每个 商品 在 商品列表 中
+    初始化局部变量 名称 = 获取键的值(商品, "name", "")
+    初始化局部变量 价格 = 获取键的值(商品, "price", 0)
+    初始化局部变量 库存 = 获取键的值(商品, "stock", 0)
+    初始化局部变量 分类 = 获取键的值(商品, "category", "")
+    
+    调用 SQLite1.执行SQL(
+      "INSERT INTO products (name, price, stock, category) VALUES (?, ?, ?, ?)",
+      创建列表(名称, 价格, 库存, 分类)
+    )
+```
+
+---
+
+## 四、查询数据
+
+### 4.1 简单查询
+
+```
+定义 查询所有用户()
+  调用 SQLite1.查询SQL("SELECT * FROM users")
+
+当 SQLite1.查询完成 时（查询结果列表, 错误信息）
+  设置 全局变量 用户列表 = 查询结果列表
+  设置 列表显示框1.适配器 = 全局变量 用户列表
+```
+
+### 4.2 条件查询
+
+```
+定义 查询用户(用户名)
+  调用 SQLite1.查询SQL(
+    "SELECT * FROM users WHERE username = ?",
+    创建列表(用户名)
+  )
+
+当 按钮_登录.被点击 时
+  初始化局部变量 用户名 = 文本输入框_用户名.文本
+  初始化局部变量 密码 = 文本输入框_密码.文本
+  
+  调用 SQLite1.查询SQL(
+    "SELECT * FROM users WHERE username = ? AND password = ?",
+    创建列表(用户名, 密码)
+  )
+
+当 SQLite1.查询完成 时（查询结果列表, 错误信息）
+  如果 列表长度(查询结果列表) > 0 则
+    调用 对话框1.显示消息对话框("登录成功", "提示", "确定")
+  否则
+    调用 对话框1.显示消息对话框("用户名或密码错误", "错误", "确定")
+```
+
+---
+
+## 五、更新数据
+
+### 5.1 更新记录
+
+```
+定义 更新库存(商品ID, 新库存)
+  调用 SQLite1.执行SQL(
+    "UPDATE products SET stock = ? WHERE id = ?",
+    创建列表(新库存, 商品ID)
+  )
+
+定义 修改密码(用户名, 新密码)
+  调用 SQLite1.执行SQL(
+    "UPDATE users SET password = ? WHERE username = ?",
+    创建列表(新密码, 用户名)
+  )
+```
+
+---
+
+## 六、删除数据
+
+### 6.1 删除记录
+
+```
+定义 删除用户(用户名)
+  调用 SQLite1.执行SQL(
+    "DELETE FROM users WHERE username = ?",
+    创建列表(用户名)
+  )
+
+定义 清空表(表名)
+  调用 SQLite1.执行SQL("DELETE FROM " + 表名)
+```
+
+---
+
+## 七、高级查询
+
+### 7.1 分页查询
+
+```
+定义 分页查询(页码, 每页数)
+  初始化局部变量 起始 = (页码 - 1) * 每页数
+  调用 SQLite1.查询SQL(
+    "SELECT * FROM products LIMIT ? OFFSET ?",
+    创建列表(每页数, 起始)
+  )
+```
+
+### 7.2 排序查询
+
+```
+定义 查询最新商品(数量)
+  调用 SQLite1.查询SQL(
+    "SELECT * FROM products ORDER BY id DESC LIMIT ?",
+    创建列表(数量)
+  )
+```
+
+### 7.3 统计查询
+
+```
+定义 统计商品数量()
+  调用 SQLite1.查询SQL("SELECT COUNT(*) as total FROM products")
+
+当 SQLite1.查询完成 时（查询结果列表, 错误信息）
+  初始化局部变量 第一条 = 选择列表项(查询结果列表, 1)
+  设置 标签_总数.文本 = "商品总数: " + 获取键的值(第一条, "total", "0")
+```
+
+---
+
+## 八、事务处理
+
+### 8.1 批量操作
+
+```
+定义 批量更新库存(更新列表)
+  调用 SQLite1.开始事务()
+  
+  对于 每个 更新 在 更新列表 中
+    调用 SQLite1.执行SQL(
+      "UPDATE products SET stock = stock - ? WHERE id = ?",
+      创建列表(获取键的值(更新, "count", 0), 获取键的值(更新, "id", 0))
+    )
+  
+  调用 SQLite1.提交事务()
+
+当 SQLite1.事务完成 时（成功）
+  如果 成功 = 真 则
+    调用 对话框1.显示消息对话框("库存更新成功", "提示", "确定")
+  否则
+    调用 对话框1.显示消息对话框("更新失败，已回滚", "错误", "确定")
+```
+
+---
+
+## 九、数据库备份
+
+### 9.1 导出备份
+
+```
+定义 备份数据库()
+  调用 SQLite1.导出数据库("/sdcard/backup.db")
+
+当 SQLite1.导出完成 时（文件路径）
+  调用 对话框1.显示消息对话框("备份已保存: " + 文件路径, "提示", "确定")
+```
+
+---
+
+## 十、常见问题
+
+### Q1：数据库文件位置？
+
+应用私有目录，卸载会删除
+
+### Q2：如何处理并发？
+
+SQLite自动加锁
+
+### Q3：数据太大？
+
+建议单表100万行内
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

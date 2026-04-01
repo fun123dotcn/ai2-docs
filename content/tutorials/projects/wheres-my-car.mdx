@@ -1,0 +1,431 @@
+---
+title: App Inventor 2 "我的车在哪"定位应用完整教程
+description: 在 Designer 中设置： - RememberButton.Enabled = 假 - DirectionsButton.Enabled = 假
+---
+
+
+# App Inventor 2 "我的车在哪"定位应用完整教程
+
+---
+
+## 一、项目概述
+
+**功能**：记住停车位置，帮你找到回去的路
+
+**场景**：在体育场停车后听演唱会，结束时找不到车了？用这个App拍照你的位置！
+
+**难度**：高级
+
+**核心组件**：LocationSensor、TinyDB、ActivityStarter
+
+**学习要点**：
+- LocationSensor GPS定位
+- TinyDB持久化存储
+- ActivityStarter启动外部应用
+- 拼接URL参数
+
+---
+
+## 二、组件设计
+
+### 2.1 UI组件
+
+| 组件类型 | 名称 | 用途 | 属性值 |
+|---------|------|------|-------|
+| Label | GPSLabel | 静态标签 | Text: "GPS:" |
+| Label | CurrentLatLabel | 显示当前纬度 | Text: "0" |
+| Label | CurrentLonLabel | 显示当前经度 | Text: "0" |
+| Label | CurrentAddressLabel | 显示当前地址 | Text: "未知地址" |
+| Label | RememberedLabel | 静态标签 | Text: "记住的位置:" |
+| Label | RememberLatLabel | 显示记住的纬度 | Text: "0" |
+| Label | RememberLonLabel | 显示记住的经度 | Text: "0" |
+| Label | RememberAddressLabel | 显示记住的地址 | Text: "未知地址" |
+| Button | RememberButton | 记住当前位置 | Text: "记住这里" |
+| Button | DirectionsButton | 导航到记住位置 | Text: "导航到这里" |
+| Button | ClearButton | 清除记录 | Text: "清除" |
+
+### 2.2 非UI组件
+
+| 组件类型 | 名称 | 用途 |
+|---------|------|------|
+| LocationSensor | LocationSensor1 | GPS定位 |
+| TinyDB | TinyDB1 | 本地数据库 |
+| ActivityStarter | ActivityStarter1 | 启动地图应用 |
+
+### 2.3 ActivityStarter配置
+
+| 属性 | 值 |
+|------|-----|
+| Action | android.intent.action.VIEW |
+| ActivityClass | com.google.android.maps.MapsActivity |
+| ActivityPackage | com.google.android.apps.maps |
+
+---
+
+## 三、核心逻辑
+
+### 3.1 位置变化事件
+
+**触发时机**：
+- GPS获取到第一个读数
+- 手机移动产生新的读数
+
+```
+当 LocationSensor1.位置变化(纬度, 经度, 地址) 时
+  // 更新当前标签
+  设置 CurrentLatLabel.Text = "纬度: " + 纬度
+  设置 CurrentLonLabel.Text = "经度: " + 经度
+  设置 CurrentAddressLabel.Text = "地址: " + 地址
+  
+  // 获取到位置后启用记住按钮
+  设置 RememberButton.Enabled = 真
+```
+
+### 3.2 记住当前位置
+
+```
+当 RememberButton.点击 时
+  // 将当前位置存入记住标签
+  设置 RememberLatLabel.Text = "纬度: " + LocationSensor1.Latitude
+  设置 RememberLonLabel.Text = "经度: " + LocationSensor1.Longitude
+  设置 RememberAddressLabel.Text = "地址: " + LocationSensor1.CurrentAddress
+  
+  // 存入数据库（持久化）
+  调用 TinyDB1.存储值(标签: "carLat", 值为: LocationSensor1.Latitude)
+  调用 TinyDB1.存储值(标签: "carLon", 值为: LocationSensor1.Longitude)
+  调用 TinyDB1.存储值(标签: "carAddress", 值为: LocationSensor1.CurrentAddress)
+  
+  // 启用导航按钮
+  设置 DirectionsButton.Enabled = 真
+  
+  调用 Notifier1.显示消息框("位置已记住！")
+```
+
+### 3.3 导航到记住的位置
+
+```
+当 DirectionsButton.点击 时
+  // 构建Google地图URL
+  // 格式: http://maps.google.com/maps/?saddr=起点&daddr=终点
+  
+  设置 全局变量 地图URL = 连接(
+    "http://maps.google.com/maps/?saddr=",
+    LocationSensor1.Latitude,  // 当前GPS位置作为起点
+    ",",
+    LocationSensor1.Longitude,
+    "&daddr=",
+    获取列表项目(TinyDB1.获取值(标签: "carLat", 值为默认: 0), 1),  // 记住的位置作为终点
+    ",",
+    获取列表项目(TinyDB1.获取值(标签: "carLon", 值为默认: 0), 1)
+  )
+  
+  // 设置ActivityStarter并启动
+  设置 ActivityStarter1.DataUri = 全局变量 地图URL
+  调用 ActivityStarter1.启动活动()
+```
+
+### 3.4 启动时读取记住的位置
+
+```
+当 Screen1.初始化 时
+  // 从数据库读取记住的位置
+  调用 TinyDB1.获取值(标签: "carLat", 值为默认: "")
+  调用 TinyDB1.获取值(标签: "carLon", 值为默认: "")
+  调用 TinyDB1.获取值(标签: "carAddress", 值为默认: "")
+```
+
+**GotValue事件处理**：
+
+```
+当 TinyDB1.获取值完成(标签, 值) 时
+  如果 标签 = "carLat" 则
+    设置 RememberLatLabel.Text = "纬度: " + 值
+  否则如果 标签 = "carLon" 则
+    设置 RememberLonLabel.Text = "经度: " + 值
+  否则如果 标签 = "carAddress" 则
+    如果 文本长度(值) > 0 则
+      // 有记住的地址
+      设置 RememberAddressLabel.Text = "地址: " + 值
+      设置 DirectionsButton.Enabled = 真
+    否则
+      // 没有记住的地址
+      设置 DirectionsButton.Enabled = 假
+    如果结束
+  如果结束
+```
+
+### 3.5 清除记录
+
+```
+当 ClearButton.点击 时
+  调用 TinyDB1.存储值(标签: "carLat", 值为: "")
+  调用 TinyDB1.存储值(标签: "carLon", 值为: "")
+  调用 TinyDB1.存储值(标签: "carAddress", 值为: "")
+  
+  设置 RememberLatLabel.Text = "纬度: 0"
+  设置 RememberLonLabel.Text = "经度: 0"
+  设置 RememberAddressLabel.Text = "未知地址"
+  设置 DirectionsButton.Enabled = 假
+  
+  调用 Notifier1.显示消息框("记录已清除")
+```
+
+---
+
+## 四、完整变量与事件
+
+### 4.1 初始状态
+
+在 Designer 中设置：
+- RememberButton.Enabled = 假
+- DirectionsButton.Enabled = 假
+
+### 4.2 完整积木块
+
+```
+全局变量 地图URL = ""
+全局变量 当前纬度 = 0
+全局变量 当前经度 = 0
+全局变量 记住纬度 = 0
+全局变量 记住经度 = 0
+
+当 Screen1.初始化 时
+  调用 TinyDB1.获取值(标签: "carLat", 值为默认: "")
+  调用 TinyDB1.获取值(标签: "carLon", 值为默认: "")
+  调用 TinyDB1.获取值(标签: "carAddress", 值为默认: "")
+
+当 LocationSensor1.位置变化(纬度, 经度, 地址) 时
+  设置 当前纬度 = 纬度
+  设置 当前经度 = 经度
+  设置 CurrentLatLabel.Text = "纬度: " + 纬度
+  设置 CurrentLonLabel.Text = "经度: " + 经度
+  设置 CurrentAddressLabel.Text = "地址: " + 地址
+  设置 RememberButton.Enabled = 真
+
+当 RememberButton.点击 时
+  设置 记住纬度 = LocationSensor1.Latitude
+  设置 记住经度 = LocationSensor1.Longitude
+  
+  设置 RememberLatLabel.Text = "纬度: " + 记住纬度
+  设置 RememberLonLabel.Text = "经度: " + 记住经度
+  设置 RememberAddressLabel.Text = "地址: " + LocationSensor1.CurrentAddress
+  
+  调用 TinyDB1.存储值(标签: "carLat", 值为: 记住纬度)
+  调用 TinyDB1.存储值(标签: "carLon", 值为: 记住经度)
+  调用 TinyDB1.存储值(标签: "carAddress", 值为: LocationSensor1.CurrentAddress)
+  
+  设置 DirectionsButton.Enabled = 真
+  调用 Notifier1.显示消息框("位置已记住！")
+
+当 DirectionsButton.点击 时
+  设置 全局变量 地图URL = 连接(
+    "http://maps.google.com/maps/?saddr=",
+    当前纬度, ",", 当前经度,
+    "&daddr=",
+    记住纬度, ",", 记住经度
+  )
+  设置 ActivityStarter1.DataUri = 全局变量 地图URL
+  调用 ActivityStarter1.启动活动()
+
+当 ClearButton.点击 时
+  调用 TinyDB1.存储值(标签: "carLat", 值为: "")
+  调用 TinyDB1.存储值(标签: "carLon", 值为: "")
+  调用 TinyDB1.存储值(标签: "carAddress", 值为: "")
+  设置 RememberLatLabel.Text = "纬度: 0"
+  设置 RememberLonLabel.Text = "经度: 0"
+  设置 RememberAddressLabel.Text = "未知地址"
+  设置 DirectionsButton.Enabled = 假
+
+当 TinyDB1.获取值完成(标签, 值) 时
+  如果 标签 = "carLat" 且 文本长度(值) > 0 则
+    设置 记住纬度 = 值
+    设置 RememberLatLabel.Text = "纬度: " + 值
+  否则如果 标签 = "carLon" 且 文本长度(值) > 0 则
+    设置 记住经度 = 值
+    设置 RememberLonLabel.Text = "经度: " + 值
+  否则如果 标签 = "carAddress" 且 文本长度(值) > 0 则
+    设置 RememberAddressLabel.Text = "地址: " + 值
+    设置 DirectionsButton.Enabled = 真
+  如果结束
+```
+
+---
+
+## 五、扩展应用
+
+### 5.1 "大家在哪" - 群组定位
+
+```
+功能：让一群人互相追踪彼此的位置
+
+实现思路：
+1. 使用 CloudDB 替代 TinyDB
+2. 每个人上传自己的位置到云端
+3. 从云端获取所有人的位置
+4. 在地图上显示所有人的位置
+```
+
+### 5.2 面包屑追踪
+
+```
+功能：记录行程轨迹
+
+实现思路：
+1. 定时记录位置变化
+2. 存储为位置列表
+3. 需要时显示完整轨迹
+
+当 LocationSensor1.位置变化(纬度, 经度, 地址) 时
+  // 获取现有轨迹
+  设置 全局变量 轨迹 = TinyDB1.获取值(标签: "breadcrumbs", 值为默认: [])
+  
+  // 添加当前位置
+  添加项目到列表(轨迹, 创建字典(
+    "lat", 纬度,
+    "lon", 经度,
+    "time", 时钟1.Now()
+  ))
+  
+  // 限制轨迹长度（只保留最近100个点）
+  如果 获取列表长度(轨迹) > 100 则
+    删除列表项目(轨迹, 1)
+  如果结束
+  
+  // 存回数据库
+  调用 TinyDB1.存储值(标签: "breadcrumbs", 值为: 轨迹)
+```
+
+### 5.3 指定距离才记录
+
+```
+全局变量 最后纬度 = 0
+全局变量 最后经度 = 0
+全局变量 最小距离 = 50  // 米
+
+当 LocationSensor1.位置变化(纬度, 经度, 地址) 时
+  // 计算与上次的距离
+  设置 全局变量 距离 = 调用 计算距离(最后纬度, 最后经度, 纬度, 经度)
+  
+  如果 距离 > 最小距离 则
+    // 距离足够远，记录新位置
+    调用 记录面包屑(纬度, 经度)
+    设置 最后纬度 = 纬度
+    设置 最后经度 = 经度
+  如果结束
+
+过程 计算距离(lat1, lon1, lat2, lon2)
+  // 使用Haversine公式计算两点间距离
+  // 返回距离（米）
+过程结束
+```
+
+---
+
+## 六、关键知识点总结
+
+### 6.1 LocationSensor
+
+| 属性/方法 | 说明 |
+|----------|------|
+| Latitude | 当前纬度 |
+| Longitude | 当前经度 |
+| CurrentAddress | 当前街道地址 |
+| HasAccuracy | 是否有精度数据 |
+| Accuracy | GPS精度（米） |
+
+### 6.2 TinyDB持久化
+
+```
+特点：
+- 数据存储在手机本地数据库
+- App关闭后数据仍然存在
+- 重新打开App可以读取数据
+
+与变量的区别：
+- 变量：App关闭后丢失
+- TinyDB：永久保存
+```
+
+### 6.3 ActivityStarter
+
+```
+用途：启动其他应用
+
+地图URL格式：
+http://maps.google.com/maps/?saddr=起点纬度,起点经度&daddr=终点纬度,终点经度
+
+参数说明：
+- saddr: 起点地址（GPS坐标）
+- daddr: 终点地址（记住的车位置）
+```
+
+---
+
+## 七、测试与部署
+
+### 7.1 测试要点
+
+1. **户外测试**：GPS在室内信号差
+2. **实际场景**：真正开车去停车场测试
+3. **权限检查**：确保位置权限已授予
+
+### 7.2 APK构建
+
+必须构建APK测试：
+- Companion模式下部分功能受限
+- TinyDB需要真实设备测试
+
+---
+
+## 八、常见问题
+
+### Q1: GPS定位不准？
+
+**原因**：
+- 室内信号差
+- GPS精度设置问题
+
+**解决**：
+- 移到户外开阔地带
+- 等待GPS锁定
+
+### Q2: ActivityStarter打不开地图？
+
+**检查**：
+- 设备是否安装了Google地图
+- URL格式是否正确
+- DataUri是否设置正确
+
+### Q3: 记住的位置显示为空？
+
+**检查**：
+- TinyDB标签是否匹配
+- 存储和读取使用相同的标签
+- 首次使用需要先记住位置
+
+---
+
+## 九、项目文件
+
+**示例AIA下载**：
+https://appinventor.mit.edu/explore/sites/all/files/ai2tutorials/wheresMyCar/AndroidWheresMyCar_MIT.aia
+
+---
+
+**教程作者**：ai2claw 🐝
+**来源**：MIT App Inventor 官方教程
+**创建时间**：2026-04-01
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [Where's My Car?](https://appinventor.mit.edu/explore/ai2/wheres-my-car) - MIT App Inventor Official Tutorial
+- [App Inventor ai2.appinventor.mit.edu](https://ai2.appinventor.mit.edu) - MIT App Inventor
+
+### 版权声明
+本文档基于 MIT App Inventor 官方教程整理，版权归原作者所有：
+- MIT App Inventor 官方教程采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

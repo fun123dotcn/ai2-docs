@@ -1,0 +1,382 @@
+---
+title: App Inventor 2 上传图片到服务器完整教程
+description: "本教程实现完整的图片上传流程：选择图片 → 压缩 → 编码 → 上传 → 服务器存储"
+---
+
+
+# App Inventor 2 上传图片到服务器完整教程
+
+> 本教程实现完整的图片上传流程：选择图片 → 压缩 → 编码 → 上传 → 服务器存储
+
+---
+
+## 一、实现思路
+
+```
+手机端流程：
+选择图片 → 压缩处理 → Base64编码 → POST上传
+
+服务器端流程：
+接收Base64 → 解码 → 保存文件 → 返回URL
+```
+
+---
+
+## 二、界面设计
+
+### 2.1 组件配置
+
+| 组件 | 名称 | 属性设置 |
+|------|------|----------|
+| 按钮 | Button_Select | 文本: "选择图片" |
+| 按钮 | Button_Upload | 文本: "上传图片" |
+| 图像 | Image_Preview | 宽度: 200, 高度: 200 |
+| 标签 | Label_Status | 文本: "状态: 等待选择" |
+| 文本框 | TextBox_ServerURL | 文本: "http://your-server.com/upload.php" |
+| ImagePicker | ImagePicker1 | 默认设置 |
+| Web客户端 | Web1 | 默认设置 |
+| 对话框 | Notifier1 | 默认设置 |
+
+### 2.2 布局建议
+
+```
+垂直布局
+├── Image_Preview（图片预览）
+├── Button_Select（选择按钮）
+├── Button_Upload（上传按钮）
+├── TextBox_ServerURL（服务器地址）
+└── Label_Status（状态显示）
+```
+
+---
+
+## 三、手机端代码实现
+
+### 3.1 选择图片
+
+```
+初始化全局变量 图片路径 = ""
+初始化全局变量 图片Base64 = ""
+
+当 Button_Select.被点击 时
+  调用 ImagePicker1.打开图片选择器()
+
+当 ImagePicker1.选择完成(选中路径) 时
+  设置 全局变量 图片路径 = 选中路径
+  设置 Image_Preview.图片 = 选中路径
+  设置 Label_Status.文本 = "状态: 已选择图片"
+```
+
+### 3.2 图片转Base64编码
+
+```
+当 Button_Upload.被点击 时
+  如果 全局变量 图片路径 = "" 则
+    调用 Notifier1.显示消息("请先选择图片")
+  否则
+    设置 Label_Status.文本 = "状态: 正在编码..."
+    
+    // 方法1: 使用文件读写扩展读取并编码
+    调用 文件扩展1.读取文件(全局变量 图片路径)
+    // 在回调中获取Base64
+    
+    // 方法2: 使用内置方法（某些版本支持）
+    设置 全局变量 图片Base64 = 调用 图像处理.转Base64(Image_Preview.图片)
+    
+    // 上传到服务器
+    调用 上传图片()
+  如果结束
+
+过程 上传图片
+  设置 Label_Status.文本 = "状态: 正在上传..."
+  
+  // 构建POST数据
+  设置 全局变量 上传数据 = {
+    "image": 全局变量 图片Base64,
+    "filename": "photo_" + 调用 时钟1.获取时间毫秒
+  }
+  
+  // 发送POST请求
+  调用 Web1.发送文本请求(
+    网址: TextBox_ServerURL.文本,
+    文本: 调用 JSON.字典转JSON(全局变量 上传数据),
+    请求头: "Content-Type: application/json"
+  )
+过程结束
+```
+
+### 3.3 处理服务器响应
+
+```
+当 Web1.收到文本响应(响应文本) 时
+  // 解析服务器返回的JSON
+  设置 全局变量 响应数据 = 调用 JSON.文本转字典(响应文本)
+  
+  如果 获取键的值(全局变量 响应数据, "success", 假) = 真 则
+    设置 全局变量 图片URL = 获取键的值(全局变量 响应数据, "url", "")
+    设置 Label_Status.文本 = "状态: 上传成功！"
+    调用 Notifier1.显示消息("上传成功！\n图片地址: " + 全局变量 图片URL)
+  否则
+    设置 Label_Status.文本 = "状态: 上传失败"
+    调用 Notifier1.显示消息("上传失败: " + 获取键的值(全局变量 响应数据, "message", ""))
+  如果结束
+```
+
+---
+
+## 四、服务器端代码（PHP）
+
+### 4.1 upload.php
+
+```php
+<?php
+header('Content-Type: application/json; charset=utf-8');
+
+// 接收POST数据
+$input = file_get_contents('php://input');
+$data = json_decode($input, true);
+
+if (!isset($data['image']) || !isset($data['filename'])) {
+    echo json_encode([
+        'success' => false,
+        'message' => '缺少必要参数'
+    ]);
+    exit;
+}
+
+// 获取Base64数据
+$base64_image = $data['image'];
+$filename = $data['filename'];
+
+// 移除Base64前缀（如果有）
+if (preg_match('/^(data:\s*image\/(\w+);base64,)/', $base64_image, $matches)) {
+    $base64_image = str_replace($matches[1], '', $base64_image);
+    $extension = $matches[2]; // jpg/png/gif
+} else {
+    $extension = 'jpg'; // 默认jpg
+}
+
+// Base64解码
+$image_data = base64_decode($base64_image);
+
+if ($image_data === false) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Base64解码失败'
+    ]);
+    exit;
+}
+
+// 生成文件名
+$upload_dir = 'uploads/';
+if (!is_dir($upload_dir)) {
+    mkdir($upload_dir, 0777, true);
+}
+
+$file_path = $upload_dir . $filename . '.' . $extension;
+
+// 保存文件
+if (file_put_contents($file_path, $image_data)) {
+    $file_url = 'http://' . $_SERVER['HTTP_HOST'] . '/' . $file_path;
+    
+    echo json_encode([
+        'success' => true,
+        'message' => '上传成功',
+        'url' => $file_url,
+        'size' => strlen($image_data)
+    ]);
+} else {
+    echo json_encode([
+        'success' => false,
+        'message' => '文件保存失败'
+    ]);
+}
+?>
+```
+
+### 4.2 服务器目录结构
+
+```
+www/
+├── upload.php
+└── uploads/
+    ├── photo_1234567890.jpg
+    ├── photo_1234567891.png
+    └── ...
+```
+
+---
+
+## 五、图片压缩优化
+
+### 5.1 压缩大图片
+
+```
+过程 压缩并上传
+  // 获取图片尺寸
+  设置 全局变量 图片信息 = 调用 图像处理.获取图片信息(Image_Preview.图片)
+  设置 全局变量 宽度 = 获取键的值(全局变量 图片信息, "width", 0)
+  设置 全局变量 高度 = 获取键的值(全局变量 图片信息, "height", 0)
+  
+  // 如果图片太大，先压缩
+  如果 全局变量 宽度 > 1024 或 全局变量 高度 > 1024 则
+    // 缩放到最大1024像素
+    设置 全局变量 缩放比例 = 1024 / 最大值(全局变量 宽度, 全局变量 高度)
+    设置 全局变量 新宽度 = 向下取整(全局变量 宽度 * 全局变量 缩放比例)
+    设置 全局变量 新高度 = 向下取整(全局变量 高度 * 全局变量 缩放比例)
+    
+    // 使用图像处理扩展缩放
+    设置 全局变量 压缩图片 = 调用 图像处理.缩放图片(
+      Image_Preview.图片, 
+      全局变量 新宽度, 
+      全局变量 新高度
+    )
+    
+    // 转Base64
+    设置 全局变量 图片Base64 = 调用 图像处理.转Base64(全局变量 压缩图片)
+  否则
+    // 直接转Base64
+    设置 全局变量 图片Base64 = 调用 图像处理.转Base64(Image_Preview.图片)
+  如果结束
+  
+  // 上传
+  调用 上传图片()
+过程结束
+```
+
+---
+
+## 六、完整代码块总结
+
+### 6.1 主流程
+
+```
+当 Screen1.初始化 时
+  设置 TextBox_ServerURL.文本 = "http://your-server.com/upload.php"
+
+当 Button_Select.被点击 时
+  调用 ImagePicker1.打开图片选择器()
+
+当 ImagePicker1.选择完成(选中路径) 时
+  设置 全局变量 图片路径 = 选中路径
+  设置 Image_Preview.图片 = 选中路径
+
+当 Button_Upload.被点击 时
+  调用 压缩并上传()
+
+当 Web1.收到文本响应(响应文本) 时
+  // 处理响应
+  设置 全局变量 响应 = 调用 JSON.文本转字典(响应文本)
+  如果 获取键的值(全局变量 响应, "success", 假) 则
+    调用 Notifier1.显示消息("上传成功")
+  否则
+    调用 Notifier1.显示消息("上传失败")
+  如果结束
+```
+
+---
+
+## 七、常见问题
+
+### 7.1 上传失败
+
+**原因1**：服务器URL错误  
+**解决**：确认TextBox_ServerURL包含完整路径
+
+**原因2**：Base64数据过大  
+**解决**：先压缩图片再上传
+
+**原因3**：服务器权限问题  
+**解决**：确保uploads目录有写入权限（chmod 777）
+
+### 7.2 图片无法显示
+
+**原因**：Base64解码失败  
+**解决**：检查Base64字符串是否完整，是否包含前缀
+
+### 7.3 网络超时
+
+**原因**：图片太大，上传时间长  
+**解决**：
+- 设置Web1.Timeout为更长时间（默认30000ms）
+- 压缩图片后再上传
+
+---
+
+## 八、安全注意事项
+
+1. **服务器端验证**：
+   - 验证文件类型（只允许jpg/png/gif）
+   - 限制文件大小
+   - 防止文件名注入攻击
+
+2. **客户端优化**：
+   - 压缩图片减少流量
+   - 显示上传进度
+   - 超时处理
+
+3. **隐私保护**：
+   - 不要上传敏感图片
+   - 服务器端及时清理临时文件
+
+---
+
+## 九、扩展功能
+
+### 9.1 显示上传进度
+
+```
+当 Web1.进度改变(当前字节, 总字节) 时
+  设置 全局变量 进度 = (当前字节 / 总字节) * 100
+  设置 Label_Status.文本 = "上传中: " + 向下取整(全局变量 进度) + "%"
+```
+
+### 9.2 多图上传
+
+```
+初始化全局变量 图片列表 = []
+
+当 Button_AddMore.被点击 时
+  添加项目到列表(全局变量 图片列表, Image_Preview.图片)
+
+当 Button_UploadAll.被点击 时
+  对于 每个项目 在 全局变量 图片列表 中
+    // 上传每张图片
+    调用 上传单张图片(项目)
+  循环结束
+```
+
+---
+
+## 十、总结
+
+完整上传流程：
+1. ✅ 选择图片（ImagePicker）
+2. ✅ 压缩优化（图像处理扩展）
+3. ✅ Base64编码
+4. ✅ POST上传（Web客户端）
+5. ✅ 服务器接收存储
+6. ✅ 返回图片URL
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-29  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

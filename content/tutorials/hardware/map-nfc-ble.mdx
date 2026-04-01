@@ -1,0 +1,244 @@
+---
+title: App Inventor 2 地图/NFC/BLE/语音唤醒教程
+description: // 使用NFC扩展 当 Screen1.初始化 时 调用 NFC扩展1.初始化()
+---
+
+
+# App Inventor 2 地图/NFC/BLE/语音唤醒教程
+
+---
+
+## 一、高德地图集成
+
+### 1.1 WebViewer嵌入高德地图
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://webapi.amap.com/maps?v=2.0&key=YOUR_KEY"></script>
+<style>
+  body { margin: 0; }
+  #map { width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+var map = new AMap.Map('map', {
+  zoom: 13,
+  center: [116.397428, 39.90923]
+});
+
+// 添加标记
+function addMarker(lng, lat, title) {
+  var marker = new AMap.Marker({
+    position: [lng, lat],
+    title: title
+  });
+  map.add(marker);
+  marker.on('click', function() {
+    AppInventor.setWebViewString(JSON.stringify({
+      type: 'marker_click',
+      title: title,
+      lng: lng,
+      lat: lat
+    }));
+  });
+}
+
+// 定位到当前位置
+function locateMe(lng, lat) {
+  map.setCenter([lng, lat]);
+  addMarker(lng, lat, '我的位置');
+}
+
+// 电子围栏
+function addFence(center, radius) {
+  var circle = new AMap.Circle({
+    center: center,
+    radius: radius,
+    strokeColor: '#F33',
+    strokeWeight: 6,
+    fillColor: '#ee2200',
+    fillOpacity: 0.35
+  });
+  map.add(circle);
+}
+
+window.onload = function() {
+  AppInventor.setWebViewString('map_ready');
+};
+</script>
+</body>
+</html>
+```
+
+### 1.2 App Inventor控制地图
+
+```
+当 LocationSensor1.LocationChanged(纬度, 经度, 高度, 速度) 时
+  如果 全局变量 地图就绪 = 真 则
+    调用 WebViewer1.EvaluateJavaScript(
+      "locateMe(" + 经度 + ", " + 纬度 + ")"
+    )
+  如果结束
+
+// 添加电子围栏
+当 Button_AddFence.被点击 时
+  调用 WebViewer1.EvaluateJavaScript(
+    "addFence([" + 全局变量 经度 + ", " + 全局变量 纬度 + "], 500)"
+  )
+
+// 接收地图事件
+当 WebViewer1.WebViewStringChange(新值) 时
+  如果 新值 = "map_ready" 则
+    设置 全局变量 地图就绪 = 真
+  否则
+    设置 全局变量 事件 = 调用 JSON.文本转字典(新值)
+    如果 获取键的值(全局变量 事件, "type", "") = "marker_click" 则
+      调用 Notifier1.显示消息("点击了: " + 获取键的值(全局变量 事件, "title", ""))
+    如果结束
+  如果结束
+```
+
+---
+
+## 二、NFC门禁卡拷贝
+
+```
+// 使用NFC扩展
+当 Screen1.初始化 时
+  调用 NFC扩展1.初始化()
+
+// 读取NFC卡
+当 Button_Read.被点击 时
+  调用 Notifier1.显示消息("请将NFC卡靠近手机背面")
+  调用 NFC扩展1.开始读取()
+
+当 NFC扩展1.读取成功(卡片数据) 时
+  设置 全局变量 卡片UID = 获取键的值(卡片数据, "uid", "")
+  设置 全局变量 卡片类型 = 获取键的值(卡片数据, "type", "")
+  设置 全局变量 卡片数据块 = 获取键的值(卡片数据, "blocks", [])
+  
+  设置 Label_UID.文本 = "UID: " + 全局变量 卡片UID
+  设置 Label_Type.文本 = "类型: " + 全局变量 卡片类型
+  
+  // 保存卡片数据
+  调用 TinyDB1.存储值(标签: "card_" + 全局变量 卡片UID, 值为标签: 调用 JSON.字典转文本(卡片数据))
+  调用 Notifier1.显示消息("卡片读取成功！UID: " + 全局变量 卡片UID)
+
+// 模拟NFC卡（需要HCE支持）
+当 Button_Emulate.被点击 时
+  如果 全局变量 卡片UID ≠ "" 则
+    调用 NFC扩展1.开始模拟(全局变量 卡片UID, 全局变量 卡片数据块)
+    调用 Notifier1.显示消息("开始模拟NFC卡，请靠近读卡器")
+  如果结束
+
+// 注意：完整的门禁卡拷贝需要：
+// 1. 支持HCE的Android设备
+// 2. 相应的NFC扩展
+// 3. 了解卡片加密协议（部分卡有加密保护）
+```
+
+---
+
+## 三、BLE广播 + nfConnect
+
+```
+// BLE广播（Beacon）
+当 Screen1.初始化 时
+  调用 BluetoothLE1.StartAdvertising(
+    UUID: "550e8400-e29b-41d4-a716-446655440000",
+    数据: [0x01, 0x02, 0x03]
+  )
+
+// 扫描BLE设备
+当 Button_Scan.被点击 时
+  调用 BluetoothLE1.StartScanning()
+
+当 BluetoothLE1.DeviceFound(设备名, 地址, RSSI, 广播数据) 时
+  添加项目到列表(全局变量 设备列表, 设备名 + " (" + 地址 + ") RSSI:" + RSSI)
+  设置 ListView1.Elements = 全局变量 设备列表
+
+// 连接BLE设备
+当 ListView1.AfterPicking() 时
+  设置 全局变量 选中地址 = 调用 提取地址(ListView1.Selection)
+  调用 BluetoothLE1.Connect(全局变量 选中地址)
+
+当 BluetoothLE1.Connected() 时
+  // 发现服务
+  调用 BluetoothLE1.DiscoverServices()
+
+当 BluetoothLE1.ServicesDiscovered(服务列表) 时
+  // 读取特征值
+  调用 BluetoothLE1.ReadCharacteristic(
+    服务UUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
+    特征UUID: "0000FFE1-0000-1000-8000-00805F9B34FB"
+  )
+
+// JDY-34双模蓝牙模块
+// JDY-34支持经典蓝牙SPP和BLE双模
+// 经典蓝牙：使用BluetoothClient连接
+// BLE模式：使用BluetoothLE连接
+// 默认波特率：9600
+// AT指令配置：AT+BAUD4（9600）
+```
+
+---
+
+## 四、语音唤醒扩展
+
+```
+// 使用语音唤醒扩展（WakeWord）
+当 Screen1.初始化 时
+  调用 语音唤醒扩展1.初始化(唤醒词: "小明小明")
+  调用 语音唤醒扩展1.开始监听()
+
+当 语音唤醒扩展1.检测到唤醒词() 时
+  // 唤醒成功
+  调用 TextToSpeech1.朗读("我在，请说")
+  调用 SpeechRecognizer1.GetText()
+
+当 SpeechRecognizer1.AfterGettingText(结果, 部分结果) 时
+  设置 全局变量 语音命令 = 结果
+  调用 处理语音命令(全局变量 语音命令)
+
+过程 处理语音命令(命令)
+  如果 文本包含(命令, "开灯") 则
+    调用 控制灯光(真)
+    调用 TextToSpeech1.朗读("好的，已开灯")
+  否则 如果 文本包含(命令, "关灯") 则
+    调用 控制灯光(假)
+    调用 TextToSpeech1.朗读("好的，已关灯")
+  否则 如果 文本包含(命令, "几点") 则
+    设置 全局变量 时间 = 调用 时钟1.格式化时间("HH点mm分")
+    调用 TextToSpeech1.朗读("现在是" + 全局变量 时间)
+  否则
+    调用 TextToSpeech1.朗读("抱歉，我没有理解您的指令")
+  如果结束
+过程结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

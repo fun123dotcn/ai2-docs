@@ -1,0 +1,347 @@
+---
+title: App Inventor 2 系统功能合集
+description: // 保持应用在后台运行 当 Screen1.初始化 时 // 申请后台运行权限 调用 权限扩展1.申请权限(["android.permission.FOREGROUND_SERVICE"])
+---
+
+
+# App Inventor 2 系统功能合集
+
+---
+
+## 一、建立自己的TinyWebDB后台
+
+### 1.1 部署TinyWebDB服务器
+
+```python
+# tinywebdb.py (Python Flask)
+from flask import Flask, request, jsonify
+import json, os
+
+app = Flask(__name__)
+DB_FILE = 'tinywebdb.json'
+
+def load_db():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_db(data):
+    with open(DB_FILE, 'w') as f:
+        json.dump(data, f, ensure_ascii=False)
+
+@app.route('/getvalue', methods=['GET', 'POST'])
+def get_value():
+    tag = request.values.get('tag', '')
+    db = load_db()
+    value = db.get(tag, '')
+    return jsonify(['VALUE', tag, value])
+
+@app.route('/storeavalue', methods=['GET', 'POST'])
+def store_value():
+    tag = request.values.get('tag', '')
+    value = request.values.get('value', '')
+    db = load_db()
+    db[tag] = value
+    save_db(db)
+    return jsonify(['STORED', tag, value])
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
+```
+
+### 1.2 App Inventor连接自建TinyWebDB
+
+```
+当 Screen1.初始化 时
+  // 设置自建服务器地址
+  设置 TinyWebDB1.ServiceURL = "http://your-server.com:8080"
+
+// 存储数据
+调用 TinyWebDB1.StoreValue(标签: "user_score", 值为标签: 全局变量 分数)
+
+// 获取数据
+调用 TinyWebDB1.GetValue(标签: "user_score")
+
+当 TinyWebDB1.GotValue(标签名, 值) 时
+  如果 标签名 = "user_score" 则
+    设置 全局变量 分数 = 文本转数字(值)
+  如果结束
+```
+
+---
+
+## 二、息屏问题（后台消息接收）
+
+```
+// 保持应用在后台运行
+当 Screen1.初始化 时
+  // 申请后台运行权限
+  调用 权限扩展1.申请权限(["android.permission.FOREGROUND_SERVICE"])
+  
+  // 启动前台服务（防止被系统杀死）
+  调用 ForegroundService1.启动(
+    通知标题: "应用运行中",
+    通知内容: "正在接收消息..."
+  )
+
+// 息屏时保持连接
+当 Screen1.暂停 时
+  // 不断开连接，保持后台运行
+  设置 全局变量 后台模式 = 真
+
+当 Screen1.恢复 时
+  设置 全局变量 后台模式 = 假
+  // 检查是否有未读消息
+  调用 检查未读消息()
+
+// 使用推送通知（FCM）
+过程 发送本地通知(标题, 内容)
+  调用 通知扩展1.发送通知(
+    标题: 标题,
+    内容: 内容,
+    图标: "notification_icon",
+    点击打开: "MainActivity"
+  )
+过程结束
+```
+
+---
+
+## 三、悬浮导航栏
+
+```
+// 使用FloatingActionButton扩展
+当 Screen1.初始化 时
+  调用 FAB扩展1.创建悬浮按钮(
+    图标: "menu",
+    位置: "右下角",
+    颜色: 蓝色
+  )
+
+当 FAB扩展1.被点击 时
+  // 显示悬浮菜单
+  调用 显示悬浮菜单()
+
+过程 显示悬浮菜单
+  设置 全局变量 菜单可见 = 非 全局变量 菜单可见
+  
+  如果 全局变量 菜单可见 = 真 则
+    // 显示菜单项（动画展开）
+    设置 VerticalArrangement_FloatMenu.可见 = 真
+    调用 动画扩展1.淡入(VerticalArrangement_FloatMenu, 300)
+  否则
+    调用 动画扩展1.淡出(VerticalArrangement_FloatMenu, 300)
+    调用 时钟_动画.开启定时器(间隔: 300)
+  如果结束
+
+当 时钟_动画.计时 时
+  设置 VerticalArrangement_FloatMenu.可见 = 假
+  调用 时钟_动画.关闭定时器()
+```
+
+---
+
+## 四、屏幕先后顺序（Z轴）
+
+```
+// App Inventor中控制组件显示层级
+// 方法1：使用Canvas（精灵有Z轴）
+设置 ImageSprite1.Z = 1  // 底层
+设置 ImageSprite2.Z = 2  // 中层
+设置 ImageSprite3.Z = 3  // 顶层
+
+// 方法2：通过可见性控制
+过程 显示在最前(组件)
+  // 先隐藏所有，再显示目标
+  对于 每个 其他组件 在 全局变量 组件列表 中
+    调用 其他组件.设置属性("可见", 假)
+  循环结束
+  调用 组件.设置属性("可见", 真)
+过程结束
+
+// 方法3：使用布局嵌套
+// 将需要在前面的组件放在后面的布局中
+// App Inventor按组件添加顺序渲染，后添加的在上层
+```
+
+---
+
+## 五、列表操作技巧
+
+### 5.1 判断列表中是否有重复项
+
+```
+过程 列表有重复项(列表)
+  对于 i 从 1 到 获取列表长度(列表)
+    对于 j 从 i + 1 到 获取列表长度(列表)
+      如果 获取列表项目(列表, i) = 获取列表项目(列表, j) 则
+        返回 真
+      如果结束
+    循环结束
+  循环结束
+  返回 假
+过程结束
+
+// 获取重复项
+过程 获取重复项(列表)
+  设置 全局变量 重复项 = 创建空列表()
+  设置 全局变量 已检查 = 创建空列表()
+  
+  对于 每个 项目 在 列表 中
+    如果 列表包含项目(全局变量 已检查, 项目) = 假 则
+      添加项目到列表(全局变量 已检查, 项目)
+    否则
+      如果 列表包含项目(全局变量 重复项, 项目) = 假 则
+        添加项目到列表(全局变量 重复项, 项目)
+      如果结束
+    如果结束
+  循环结束
+  
+  返回 全局变量 重复项
+过程结束
+
+// 列表去重
+过程 列表去重(列表)
+  设置 全局变量 结果 = 创建空列表()
+  
+  对于 每个 项目 在 列表 中
+    如果 列表包含项目(全局变量 结果, 项目) = 假 则
+      添加项目到列表(全局变量 结果, 项目)
+    如果结束
+  循环结束
+  
+  返回 全局变量 结果
+过程结束
+```
+
+### 5.2 列表排序
+
+```
+过程 列表排序(列表, 升序)
+  // 冒泡排序
+  设置 全局变量 长度 = 获取列表长度(列表)
+  
+  对于 i 从 1 到 全局变量 长度 - 1
+    对于 j 从 1 到 全局变量 长度 - i
+      设置 全局变量 当前 = 获取列表项目(列表, j)
+      设置 全局变量 下一个 = 获取列表项目(列表, j + 1)
+      
+      如果 (升序 = 真 且 全局变量 当前 > 全局变量 下一个) 或
+           (升序 = 假 且 全局变量 当前 < 全局变量 下一个) 则
+        // 交换
+        调用 替换列表项目(列表, j, 全局变量 下一个)
+        调用 替换列表项目(列表, j + 1, 全局变量 当前)
+      如果结束
+    循环结束
+  循环结束
+  
+  返回 列表
+过程结束
+```
+
+---
+
+## 六、积木技巧
+
+### 6.1 获取启动值积木位置
+
+```
+// 积木位置：控制 → 获取启动值
+// 或：内置块 → 控制 → 获取启动值
+
+当 Screen1.初始化 时
+  设置 全局变量 启动值 = 获取启动值()
+  
+  如果 全局变量 启动值 ≠ "" 则
+    // 处理启动值
+    调用 处理启动参数(全局变量 启动值)
+  如果结束
+```
+
+### 6.2 求值但忽略结果
+
+```
+// 用途：执行有副作用的函数但不需要返回值
+// 积木位置：内置块 → 控制 → 求值但忽略结果
+
+// 示例：调用有返回值的过程但不使用返回值
+求值但忽略结果 调用 某个有返回值的过程(参数)
+
+// 等价于：
+设置 全局变量 临时 = 调用 某个有返回值的过程(参数)
+// 然后不使用 全局变量 临时
+```
+
+### 6.3 hexstringtostr转换
+
+```
+// 十六进制字符串转普通字符串
+过程 hexstringtostr(十六进制字符串)
+  设置 全局变量 清理文本 = 文本替换(十六进制字符串, " ", "")
+  设置 全局变量 结果 = ""
+  
+  对于 i 从 1 到 文本长度(全局变量 清理文本) 步长 2
+    设置 全局变量 字节文本 = 文本取部分(全局变量 清理文本, i, i + 1)
+    设置 全局变量 字节值 = 调用 十六进制转十进制(全局变量 字节文本)
+    设置 全局变量 结果 = 全局变量 结果 + 文本字符(全局变量 字节值)
+  循环结束
+  
+  返回 全局变量 结果
+过程结束
+
+// 示例
+调用 hexstringtostr("48656C6C6F")  // 返回 "Hello"
+调用 hexstringtostr("E4B8AD E69687")  // 返回 "中文"（UTF-8）
+```
+
+---
+
+## 七、文件管理器读取文件
+
+```
+// 让系统文件管理器选择文件
+当 Button_OpenFile.被点击 时
+  调用 ActivityStarter1.StartActivity()
+
+// 配置ActivityStarter
+设置 ActivityStarter1.Action = "android.intent.action.GET_CONTENT"
+设置 ActivityStarter1.DataType = "*/*"  // 所有文件类型
+// 或指定类型
+// 设置 ActivityStarter1.DataType = "text/plain"  // 文本文件
+// 设置 ActivityStarter1.DataType = "image/*"     // 图片
+
+当 ActivityStarter1.AfterActivity(结果) 时
+  如果 ActivityStarter1.ResultCode = -1 则
+    // 用户选择了文件
+    设置 全局变量 文件URI = ActivityStarter1.ResultUri
+    设置 Label_FilePath.文本 = 全局变量 文件URI
+    
+    // 读取文件内容
+    调用 文件1.读取文件(全局变量 文件URI)
+  如果结束
+
+当 文件1.读取完成(文件内容) 时
+  设置 Label_Content.文本 = 文件内容
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

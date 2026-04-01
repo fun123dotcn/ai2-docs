@@ -1,0 +1,167 @@
+---
+title: CloudDB 实时聊天应用
+description: 基于MIT官方教程，构建多人实时聊天应用
+---
+
+# CloudDB 实时聊天应用
+
+<ExtendedDescription>
+  本教程教你构建一个基于 CloudDB 的实时多人聊天应用，用户可以在不同设备上实时收发消息。难度：中级。
+</ExtendedDescription>
+
+## 项目概述
+
+<CardGroup>
+  <Card title="难度" icon="signal">
+    中级
+  </Card>
+  <Card title="核心组件" icon="box">
+    CloudDB、ListView
+  </Card>
+  <Card title="学习收获" icon="graduation-cap">
+    CloudDB云端数据存储、实时数据同步、多设备消息传递
+  </Card>
+</CardGroup>
+
+## 组件设计
+
+<Steps>
+  <Step title="创建项目">
+    访问 [ai2.appinventor.mit.edu](http://ai2.appinventor.mit.edu)，创建新项目 **CloudDBChat**
+  </Step>
+  <Step title="添加组件">
+    在 Designer 中添加以下组件：
+
+    | 组件类型 | 组件名称 | 属性 |
+    |---------|---------|------|
+    | Label | Label1 | Text: "Enter your name to join the chat" |
+    | TextBox | TextBox1 | |
+    | Button | SubmitButton | Text: "Submit" |
+    | ListView | ListView1 | BackgroundColor: White |
+    | CloudDB | CloudDB1 | |
+  </Step>
+  <Step title="Screen设置">
+    - **AlignHorizontal**: Center
+    - **Title**: CloudDB Chat
+  </Step>
+</Steps>
+
+## 变量初始化
+
+```blocks
+全局变量 userName = ""    // 用户名
+全局变量 joined = 假      // 是否已加入
+全局变量 chatList = []    // 消息列表
+```
+
+## 核心逻辑
+
+<AccordionGroup>
+  <Accordion title="提交按钮点击事件" defaultOpen>
+    当用户点击 Submit 按钮时，根据是否已加入聊天来处理：
+
+    ```blocks
+    当 SubmitButton.点击 时
+      如果 不(joined) 则
+        // 登录流程
+        如果 TextBox1.文本 ≠ "" 则
+          设置 userName = TextBox1.文本
+          设置 joined = 真
+          设置 Label1.文本 = "欢迎 " + userName + " 加入聊天！"
+        否则
+          调用 Notifier1.显示消息框("请输入用户名")
+        如果结束
+      否则
+        // 发送消息流程
+        设置 全局变量 新消息 = userName + ": " + TextBox1.文本
+        调用 CloudDB1.获取值(标签: "chat", 值如果不存在: [])
+        设置 TextBox1.文本 = ""
+      如果结束
+    ```
+  </Accordion>
+
+  <Accordion title="获取历史消息">
+    Screen 初始化时获取已有聊天记录：
+
+    ```blocks
+    当 Screen1.初始化 时
+      调用 CloudDB1.获取值(标签: "chat", 值如果不存在: [])
+    ```
+  </Accordion>
+
+  <Accordion title="实时消息同步（核心）">
+    **DataChanged 事件** - 任何用户发送消息时触发：
+
+    ```blocks
+    当 CloudDB1.数据已改变(标签, 值) 时
+      如果 标签 = "chat" 则
+        设置 chatList = 值
+        设置 ListView1.Elements = chatList
+        设置 ListView1.SelectionIndex = 获取列表长度(chatList)
+      如果结束
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 测试与部署
+
+<Callout type="warning" title="重要提示">
+  最佳测试方式：使用多台真机设备构建 APK。MIT AI2 Companion 不允许多用户同时连接。
+</Callout>
+
+<Steps>
+  <Step title="构建 APK">
+    从 Build 菜单选择 "Android App (.apk)"
+  </Step>
+  <Step title="安装应用">
+    扫描生成的二维码，在多台设备上安装
+  </Step>
+  <Step title="测试">
+    从不同设备发送消息，验证所有设备都能收到
+  </Step>
+</Steps>
+
+## 功能扩展
+
+<Tabs>
+  <Tab title="消息倒序">
+    让最新消息显示在顶部：
+
+    ```blocks
+    设置 ListView1.Elements = 反转列表(chatList)
+    ```
+  </Tab>
+  <Tab title="添加时间戳">
+    ```blocks
+    设置 全局变量 时间戳 = 时钟1.FormatDateTime(时钟1.Now(), "HH:mm")
+    设置 全局变量 消息 = "[" + 时间戳 + "] " + userName + ": " + 消息
+    ```
+  </Tab>
+  <Tab title="清空记录">
+    ```blocks
+    当 Button_清空.点击 时
+      调用 CloudDB1.存储值(标签: "chat", 值为: [])
+    ```
+  </Tab>
+</Tabs>
+
+## 常见问题
+
+<AccordionGroup>
+  <Accordion title="Q: 消息显示延迟？">
+    **原因**：网络延迟或 CloudDB 免费服务器负载高
+
+    **解决**：使用自己的 Redis CloudDB 服务器
+  </Accordion>
+  <Accordion title="Q: 消息丢失？">
+    **原因**：同时写入可能导致数据覆盖
+
+    **解决**：使用 CloudDB 的 Merge 模式，添加消息ID实现增量更新
+  </Accordion>
+</AccordionGroup>
+
+## 原文来源
+
+<Callout type="info" title="版权说明">
+  本教程基于 MIT App Inventor 官方教程整理：[CloudDB Chat App](https://appinventor.mit.edu/explore/ai2/clouddb-chat)，采用 CC BY-SA 4.0 授权。
+</Callout>

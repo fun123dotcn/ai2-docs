@@ -1,0 +1,234 @@
+---
+title: App Inventor 2 UI设计与扩展教程
+description: // Plyr是一个轻量级HTML5播放器 // 在WebViewer中使用
+---
+
+
+# App Inventor 2 UI设计与扩展教程
+
+---
+
+## 一、v0.dev + MasterGO 设计APP UI
+
+### 1.1 v0.dev AI生成UI
+
+```
+// v0.dev是Vercel的AI UI生成工具
+// 访问 https://v0.dev
+
+// 使用流程：
+// 1. 描述UI需求："创建一个电商首页，包含轮播图、分类导航、商品列表"
+// 2. v0.dev生成React代码
+// 3. 复制生成的UI设计
+// 4. 在App Inventor中用WebViewer渲染
+
+// 或使用v0.dev生成的代码作为参考，在App Inventor中手动实现
+
+// 示例：将v0.dev生成的UI嵌入App Inventor
+当 Screen1.初始化 时
+  设置 WebViewer1.HomeUrl = "file:///android_asset/ui/index.html"
+  // 或托管到服务器
+  // 设置 WebViewer1.HomeUrl = "https://your-app.vercel.app"
+```
+
+### 1.2 MasterGO设计协作
+
+```
+// MasterGO是在线设计工具（类似Figma）
+// 使用流程：
+// 1. 在MasterGO中设计UI原型
+// 2. 导出设计规范（颜色、字体、间距）
+// 3. 在App Inventor中按规范实现
+
+// 设计规范示例
+初始化全局变量 设计规范 = {
+  "主色": "#2196F3",
+  "次色": "#FF9800",
+  "背景色": "#FFFFFF",
+  "文字颜色": "#333333",
+  "标题字体": 20,
+  "正文字体": 14,
+  "边距": 16,
+  "圆角": 8
+}
+
+当 Screen1.初始化 时
+  // 应用设计规范
+  设置 Screen1.背景颜色 = 获取键的值(全局变量 设计规范, "背景色", "#FFFFFF")
+  
+  设置 Button1.背景颜色 = 获取键的值(全局变量 设计规范, "主色", "#2196F3")
+  设置 Button1.文字颜色 = "#FFFFFF"
+  设置 Button1.字体大小 = 获取键的值(全局变量 设计规范, "正文字体", 14)
+  
+  设置 Label_Title.文字颜色 = 获取键的值(全局变量 设计规范, "文字颜色", "#333333")
+  设置 Label_Title.字体大小 = 获取键的值(全局变量 设计规范, "标题字体", 20)
+```
+
+---
+
+## 二、Plyr播放器添加缓冲动画
+
+```
+// Plyr是一个轻量级HTML5播放器
+// 在WebViewer中使用
+
+// HTML页面
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+<style>
+  .custom-buffer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top: 3px solid #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: none;
+  }
+  @keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+  .plyr--loading .custom-buffer {
+    display: block;
+  }
+</style>
+</head>
+<body>
+<div class="plyr__video-embed">
+  <video id="player" controls>
+    <source src="video.mp4" type="video/mp4">
+  </video>
+  <div class="custom-buffer"></div>
+</div>
+<script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+<script>
+const player = new Plyr('#player', {
+  controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen']
+});
+
+// 缓冲事件
+player.on('waiting', () => {
+  document.querySelector('.plyr').classList.add('plyr--loading');
+  AppInventor.setWebViewString(JSON.stringify({event: 'buffering'}));
+});
+
+player.on('canplay', () => {
+  document.querySelector('.plyr').classList.remove('plyr--loading');
+  AppInventor.setWebViewString(JSON.stringify({event: 'ready'}));
+});
+
+player.on('ended', () => {
+  AppInventor.setWebViewString(JSON.stringify({event: 'ended'}));
+});
+</script>
+</body>
+</html>
+```
+
+// App Inventor接收事件
+当 WebViewer1.WebViewStringChange(新值) 时
+  设置 全局变量 事件 = 调用 JSON.文本转字典(新值)
+  设置 全局变量 类型 = 获取键的值(全局变量 事件, "event", "")
+  
+  如果 全局变量 类型 = "buffering" 则
+    设置 Label_Status.文本 = "缓冲中..."
+    设置 Label_Status.文字颜色 = 橙色
+  否则 如果 全局变量 类型 = "ready" 则
+    设置 Label_Status.文本 = "就绪"
+    设置 Label_Status.文字颜色 = 绿色
+  否则 如果 全局变量 类型 = "ended" 则
+    设置 Label_Status.文本 = "播放完成"
+    调用 播放下一个()
+  如果结束
+```
+
+---
+
+## 三、文字转图片（Markdown渲染）
+
+```
+// 使用flexmark-java + WebView渲染Markdown
+
+// 方案1：WebViewer + marked.js
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 16px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 24px; color: #333; }
+  h2 { font-size: 20px; color: #333; }
+  code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; }
+  pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<div id="content"></div>
+<script>
+function renderMarkdown(text) {
+  document.getElementById('content').innerHTML = marked.parse(text);
+}
+function captureImage() {
+  // 使用html2canvas截图
+  html2canvas(document.body).then(canvas => {
+    AppInventor.setWebViewString(canvas.toDataURL());
+  });
+}
+</script>
+</body>
+</html>
+```
+
+// App Inventor调用
+过程 渲染Markdown(Markdown文本)
+  调用 WebViewer1.EvaluateJavaScript(
+    "renderMarkdown('" + 调用 转义引号(Markdown文本) + "')"
+  )
+
+过程 保存为图片
+  调用 WebViewer1.EvaluateJavaScript("captureImage()")
+
+当 WebViewer1.WebViewStringChange(新值) 时
+  如果 文本开头(新值, "data:image") = 真 则
+    // 保存Base64图片
+    调用 图像扩展1.Base64转图片(
+      Base64数据: 新值,
+      输出路径: "/sdcard/Pictures/markdown_" + 调用 时钟1.获取时间毫秒() + ".png"
+    )
+    调用 Notifier1.显示消息("图片已保存")
+  如果结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

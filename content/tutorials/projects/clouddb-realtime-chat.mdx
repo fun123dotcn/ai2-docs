@@ -1,0 +1,371 @@
+---
+title: App Inventor 2 CloudDB 实时聊天应用完整教程
+description: 访问 [ai2.appinventor.mit.edu](http://ai2.appinventor.mit.edu)，创建新项目 **CloudDBChat**
+---
+
+
+# App Inventor 2 CloudDB 实时聊天应用完整教程
+
+---
+
+## 一、项目概述
+
+本教程教你构建一个基于 **CloudDB** 的实时多人聊天应用，用户可以在不同设备上实时收发消息。
+
+**难度**：中级
+
+**核心组件**：CloudDB、ListView
+
+**学习收获**：
+- CloudDB云端数据存储
+- 实时数据同步
+- 多设备消息传递
+
+---
+
+## 二、项目创建
+
+访问 [ai2.appinventor.mit.edu](http://ai2.appinventor.mit.edu)，创建新项目 **CloudDBChat**
+
+---
+
+## 三、组件设计
+
+### 3.1 界面布局
+
+在 Designer 中添加以下组件：
+
+| 组件类型 | 组件名称 | 属性 | 属性值 |
+|---------|---------|------|-------|
+| Label | Label1 | Text | "Enter your name to join the chat" |
+| HorizontalArrangement | HorizontalArrangement1 | Width | Fill Parent |
+| | | AlignHorizontal | Center: 3 |
+| TextBox | TextBox1 | | (默认) |
+| Button | SubmitButton | Text | "Submit" |
+| ListView | ListView1 | BackgroundColor | White |
+| | | TextColor | Black |
+| CloudDB | CloudDB1 | | (默认) |
+
+### 3.2 Screen设置
+
+- **AlignHorizontal**：Center: 3
+- **Title**：CloudDB Chat
+
+---
+
+## 四、变量初始化
+
+初始化三个全局变量：
+
+```
+全局变量 userName
+  // 用户名，登录时存储
+
+全局变量 joined
+  // 布尔值，记录是否已加入聊天
+
+全局变量 chatList
+  // 存储所有聊天消息的列表
+```
+
+---
+
+## 五、核心逻辑实现
+
+### 5.1 提交按钮点击事件
+
+当用户点击 Submit 按钮时，根据是否已加入聊天来处理：
+
+**逻辑流程**：
+1. 检查是否已加入聊天
+2. 如果未加入：设置用户名，显示欢迎消息
+3. 如果已加入：发送聊天消息到 CloudDB
+
+**积木块实现**：
+
+```
+当 SubmitButton.点击 时
+  // 检查是否已加入
+  如果 不(joined) 则
+    // 登录流程
+    如果 TextBox1.文本 ≠ "" 则
+      设置 userName = TextBox1.文本
+      设置 joined = 真
+      设置 Label1.文本 = "欢迎 " + userName + " 加入聊天！"
+    否则
+      调用 Notifier1.显示消息框("请输入用户名")
+    如果结束
+  否则
+    // 发送消息流程
+    // 构建消息：用户名: 消息内容
+    设置 全局变量 新消息 = userName + ": " + TextBox1.文本
+    
+    // 获取现有消息列表，追加新消息
+    调用 CloudDB1.获取值(标签: "chat", 值如果不存在: [])
+    
+    // 清空输入框
+    设置 TextBox1.文本 = ""
+  如果结束
+```
+
+### 5.2 获取历史消息
+
+**Screen初始化时获取已有聊天记录**：
+
+```
+当 Screen1.初始化 时
+  调用 CloudDB1.获取值(标签: "chat", 值如果不存在: [])
+```
+
+### 5.3 处理CloudDB返回值
+
+**GotValue 事件处理**：
+
+```
+当 CloudDB1.获取值完成(标签, 值) 时
+  如果 标签 = "chat" 则
+    设置 chatList = 值
+    设置 ListView1.Elements = chatList
+    // 自动滚动到底部
+    设置 ListView1.SelectionIndex = 获取列表长度(chatList)
+  如果结束
+```
+
+### 5.4 实时消息同步（核心！）
+
+**DataChanged 事件 - 任何用户发送消息时触发**：
+
+```
+当 CloudDB1.数据已改变(标签, 值) 时
+  如果 标签 = "chat" 则
+    设置 chatList = 值
+    设置 ListView1.Elements = chatList
+    // 自动滚动到底部显示最新消息
+    设置 ListView1.SelectionIndex = 获取列表长度(chatList)
+  如果结束
+```
+
+---
+
+## 六、完整积木块代码
+
+### 6.1 全局变量声明
+
+```
+全局变量 userName = ""
+全局变量 joined = 假
+全局变量 chatList = []
+```
+
+### 6.2 发送消息的完整逻辑
+
+```
+当 SubmitButton.点击 时
+  如果 不(joined) 则
+    如果 TextBox1.文本 ≠ "" 则
+      设置 userName = TextBox1.文本
+      设置 joined = 真
+      设置 Label1.文本 = "欢迎 " + userName + " 加入聊天！"
+      设置 SubmitButton.文本 = "发送"
+      // 初始化聊天记录
+      调用 CloudDB1.获取值(标签: "chat", 值如果不存在: [])
+    否则
+      调用 Notifier1.显示消息框("请输入用户名再加入聊天")
+    如果结束
+  否则
+    如果 TextBox1.文本 ≠ "" 则
+      // 构建带用户名的消息
+      设置 全局变量 消息内容 = userName + ": " + TextBox1.文本
+      
+      // 从现有列表追加（云端合并）
+      调用 CloudDB1.获取值(标签: "chat", 值如果不存在: [])
+    如果结束
+  如果结束
+```
+
+### 6.3 云端数据处理
+
+**关键点**：先获取再写入，实现多用户消息合并
+
+```
+当 CloudDB1.获取值完成(标签, 值) 时
+  如果 标签 = "chat" 则
+    设置 全局变量 当前列表 = 值
+    // 检查是否有待发送消息
+    如果 全局变量 待发送消息 ≠ "" 且 待发送消息 ≠ 空 则
+      // 追加新消息到列表
+      添加项目到列表(当前列表, 待发送消息)
+      // 写回云端
+      调用 CloudDB1.存储值(标签: "chat", 值为: 当前列表)
+      设置 全局变量 待发送消息 = ""
+    否则
+      // 纯读取模式，更新显示
+      设置 全局变量 chatList = 当前列表
+      设置 ListView1.Elements = chatList
+    如果结束
+  如果结束
+```
+
+---
+
+## 七、测试与部署
+
+### 7.1 测试方法
+
+**最佳测试方式**：使用多台真机设备
+
+```
+原因：
+- MIT AI2 Companion 不允许多用户同时连接
+- 真机构建 APK 才能完美测试多设备聊天
+```
+
+**测试步骤**：
+1. 从 Build 菜单选择 "Android App (.apk)"
+2. 等待 APK 构建完成
+3. 扫描生成的二维码
+4. 在多台设备上安装 APK
+5. 从不同设备发送消息
+6. 验证所有设备都能收到消息
+
+### 7.2 功能验证
+
+- ✅ 关闭应用后重新打开，能看到历史消息
+- ✅ 从设备A发送的消息能立即显示在设备B上
+- ✅ 用户名正确显示在消息前面
+
+---
+
+## 八、功能扩展
+
+### 8.1 消息倒序显示
+
+让最新消息显示在顶部：
+
+```
+当 CloudDB1.数据已改变(标签, 值) 时
+  如果 标签 = "chat" 则
+    设置 全局变量 chatList = 反转列表(值)
+    设置 ListView1.Elements = chatList
+  如果结束
+```
+
+### 8.2 显示用户加入通知
+
+```
+当 用户加入时
+  设置 全局变量 消息内容 = userName + " 已加入聊天"
+  // 存入特殊标签
+  调用 CloudDB1.存储值(标签: "chat", 值为: ...)
+```
+
+### 8.3 添加时间戳
+
+```
+当 添加消息时
+  设置 全局变量 时间戳 = 调用 时钟1.FormatDateTime(时钟1.Now(), "HH:mm")
+  设置 全局变量 消息内容 = "[" + 时间戳 + "] " + userName + ": " + 消息
+```
+
+### 8.4 清空聊天记录
+
+```
+当 Button_清空.点击 时
+  调用 CloudDB1.存储值(标签: "chat", 值为: [])
+  设置 ListView1.Elements = []
+  调用 Notifier1.显示消息框("聊天记录已清空")
+```
+
+### 8.5 聊天室功能
+
+```
+// 每个房间使用不同的标签
+调用 CloudDB1.存储值(标签: "chat_" + 房间名称, 值为: 消息)
+```
+
+---
+
+## 九、常见问题
+
+### Q1: 消息显示延迟？
+
+**原因**：网络延迟或 CloudDB 免费服务器负载高
+
+**解决方案**：
+- 使用自己的 Redis CloudDB 服务器
+- 优化网络连接
+
+### Q2: 消息丢失？
+
+**原因**：同时写入可能导致数据覆盖
+
+**解决方案**：
+- 使用 CloudDB 的 Merge 模式
+- 添加消息ID实现增量更新
+
+### Q3: 历史消息不显示？
+
+**检查**：
+- CloudDB1 是否正确配置
+- 初始化事件是否正确触发
+- 列表变量是否正确更新
+
+---
+
+## 十、进阶：使用TinyDB同步
+
+如果只用两台设备，可以用 TinyDB 实现本地消息同步：
+
+```
+当 Screen1.初始化 时
+  设置 chatList = TinyDB1.获取值(标签: "messages", 值为默认: [])
+
+当 添加消息时
+  添加项目到列表(chatList, 新消息)
+  TinyDB1.存储值(标签: "messages", 值为: chatList)
+  ListView1.Elements = chatList
+```
+
+---
+
+## 十一、完整项目结构
+
+```
+CloudDBChat
+├── Screen1
+│   ├── Label1 (欢迎提示)
+│   ├── TextBox1 (输入框)
+│   ├── SubmitButton (提交按钮)
+│   ├── ListView1 (消息列表)
+│   ├── CloudDB1 (云端数据库)
+│   └── Notifier1 (提示组件)
+├── 变量
+│   ├── userName
+│   ├── joined
+│   └── chatList
+└── 事件
+    ├── Screen1.初始化
+    ├── SubmitButton.点击
+    ├── CloudDB1.获取值完成
+    └── CloudDB1.数据已改变
+```
+
+---
+
+**教程作者**：ai2claw 🐝
+**来源**：MIT App Inventor 官方教程
+**创建时间**：2026-04-01
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [CloudDB Chat App](https://appinventor.mit.edu/explore/ai2/clouddb-chat) - MIT App Inventor Official Tutorial
+- [App Inventor ai2.appinventor.mit.edu](https://ai2.appinventor.mit.edu) - MIT App Inventor
+
+### 版权声明
+本文档基于 MIT App Inventor 官方教程整理，版权归原作者所有：
+- MIT App Inventor 官方教程采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

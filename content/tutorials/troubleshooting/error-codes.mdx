@@ -1,0 +1,706 @@
+---
+title: "App Inventor 2 常见错误代码完整解决方案"
+description: "**错误信息**： Build service is not responding. Please try again later."
+---
+
+
+# App Inventor 2 常见错误代码完整解决方案
+
+---
+
+## 一、编译构建错误
+
+### 1.1 Error 0x800710D2 - USB文件访问错误
+
+**错误信息**：
+```
+Error 0x800710D2 accessing via USB cable to phone files
+```
+
+**原因分析**：
+```
+- USB调试模式未正确开启
+- 手机驱动安装失败
+- ADB服务异常
+- 文件权限不足
+```
+
+**解决方案**：
+
+```
+步骤1：检查USB调试
+1. 手机设置 → 关于手机 → 连续点击版本号7次（开启开发者模式）
+2. 设置 → 开发者选项 → 开启USB调试
+3. 重新连接USB线
+
+步骤2：重新安装驱动
+Windows：
+1. 设备管理器 → 找到Android设备
+2. 右键 → 更新驱动程序
+3. 选择"浏览我的计算机..."
+4. 选择Google USB驱动
+
+Mac/Linux：
+通常自动识别，无需额外驱动
+
+步骤3：重启ADB服务
+adb kill-server
+adb start-server
+adb devices
+
+步骤4：检查文件权限
+确保SD卡可访问：
+设置 → 应用 → MIT AI2 Companion → 权限 → 存储（允许）
+```
+
+---
+
+### 1.2 Build Timeout - 构建超时
+
+**错误信息**：
+```
+Build service is not responding. Please try again later.
+```
+
+**原因分析**：
+```
+- 网络不稳定
+- 项目太大
+- 服务器负载高
+- 同时构建人数过多
+```
+
+**解决方案**：
+
+```
+方案1：重试构建
+等待30秒后重新点击Build
+
+方案2：优化项目
+- 减少组件数量
+- 拆分大型Screen
+- 清理未使用的资源
+
+方案3：避开高峰
+美国晚间（北京时间白天）是高峰期
+建议：北京时间凌晨或深夜
+
+方案4：检查网络
+ping ai2.appinventor.mit.edu
+traceroute ai2.appinventor.mit.edu
+
+方案5：使用代理
+如果公司网络限制，尝试切换网络
+```
+
+---
+
+### 1.3 DX Execution Failed - 代码执行失败
+
+**错误信息**：
+```
+DexException: EXCEPTION FROM SIMULATION:
+Dex超前误差: IR_00002
+DX cannot accept input with type: null
+```
+
+**原因分析**：
+```
+- 扩展冲突
+- 代码语法错误
+- 组件版本不兼容
+- 内存不足
+```
+
+**解决方案**：
+
+```
+步骤1：检查扩展
+- 扩展数量过多会导致DX失败
+- 删除不必要的扩展
+- 确保扩展来自可靠来源
+
+步骤2：清理项目
+- 删除未使用的组件
+- 清理未使用的资源文件
+- 减少图片资源大小
+
+步骤3：分批测试
+1. 备份项目
+2. 删除所有扩展
+3. 测试构建是否成功
+4. 逐个添加扩展，找出冲突的扩展
+
+步骤4：更新组件
+- 确保使用最新版本的App Inventor
+- 更新Companion应用
+```
+
+---
+
+### 1.4 Unable to Build APK - 无法构建APK
+
+**错误信息**：
+```
+Unable to build APK in MIT App Inventor (Build option not working)
+```
+
+**原因分析**：
+```
+- 浏览器缓存损坏
+- 项目数据损坏
+- 账户问题
+- 系统维护
+```
+
+**解决方案**：
+
+```
+步骤1：清除浏览器缓存
+Chrome：
+1. Ctrl+Shift+Delete
+2. 选择"所有时间"
+3. 勾选"缓存图片和文件"
+4. 点击"清除数据"
+
+Firefox：
+1. Ctrl+Shift+Delete
+2. 选择"所有时间"
+3. 点击"确定"
+
+步骤2：导出检查aia
+1. Projects → Export selected project (.aia)
+2. 解压检查：unzip xxx.aia -d check
+3. 检查XML文件是否完整
+
+步骤3：使用隐身模式
+Chrome：Ctrl+Shift+N
+在隐身窗口中登录App Inventor
+
+步骤4：尝试其他浏览器
+- Chrome → Firefox → Edge
+
+步骤5：检查项目Checkpoints
+如果项目损坏，恢复到之前的正常版本
+```
+
+---
+
+## 二、运行时错误
+
+### 2.1 Matrix Error: Invalid dimension size: 0
+
+**错误信息**：
+```
+Error: Invalid dimension size: 0
+```
+
+**原因分析**：
+```
+- 尝试创建0x0的矩阵
+- 列表为空时转换为矩阵
+- 数据源为空
+```
+
+**解决方案**：
+
+```
+错误代码示例：
+调用 Matrix1.从列表创建(空列表)  // 错误！
+
+正确代码：
+过程 安全创建矩阵(数据列表)
+  如果 获取列表长度(数据列表) = 0 则
+    调用 Notifier1.显示消息("数据不能为空")
+    返回 假
+  否则
+    调用 Matrix1.从列表创建(数据列表)
+    返回 真
+  如果结束
+过程结束
+
+当 Button_创建矩阵.被点击 时
+  设置 全局变量 数据 = 获取用户数据()
+  
+  // 添加安全检查
+  如果 全局变量 数据 ≠ 空 且 获取列表长度(全局变量 数据) > 0 则
+    调用 Matrix1.从列表创建(全局变量 数据)
+  否则
+    调用 Notifier1.显示消息("请先输入数据")
+  如果结束
+```
+
+---
+
+### 2.2 Runtime Error: null reference
+
+**错误信息**：
+```
+Runtime Error: Attempt to invoke method on null object reference
+```
+
+**原因分析**：
+```
+- 组件未初始化就使用
+- 对象为空时调用方法
+- Screen间传递数据问题
+```
+
+**解决方案**：
+
+```
+错误示例：
+设置 Label1.文本 = 全局变量 数据  // 全局变量可能为空
+
+正确代码：
+设置 Label1.文本 = 如果(全局变量 数据 = 空, "无数据", 全局变量 数据)
+
+或使用过程：
+过程 安全获取文本(数据, 默认值)
+  如果 数据 = 空 则
+    返回 默认值
+  否则
+    返回 数据
+  如果结束
+过程结束
+
+设置 Label1.文本 = 调用 安全获取文本(全局变量 数据, "无数据")
+```
+
+---
+
+### 2.3 App Crashes on Start - 启动崩溃
+
+**错误信息**：
+应用安装后打开即崩溃
+
+**原因分析**：
+```
+- Screen名称包含特殊字符
+- 组件ID冲突
+- 扩展初始化失败
+- 权限问题
+```
+
+**解决方案**：
+
+```
+步骤1：检查Screen名称
+- 只能包含字母、数字、下划线
+- 不能以数字开头
+- 不能包含空格
+
+错误：Screen 1
+正确：Screen1 或 MainScreen
+
+步骤2：检查组件ID
+- 确保没有重复的组件名称
+- 不要使用保留字作为名称
+
+步骤3：检查扩展
+- 更新到最新版本的扩展
+- 删除可疑扩展测试
+
+步骤4：查看错误日志
+1. 连接电脑
+2. 打开命令提示符
+3. 运行：adb logcat | grep "FATAL EXCEPTION"
+```
+
+---
+
+### 2.4 Companion Disconnects - Companion断开连接
+
+**错误信息**：
+```
+Connection with companion lost
+Please reconnect
+```
+
+**原因分析**：
+```
+- 网络不稳定
+- 手机息屏进入休眠
+- 应用代码导致崩溃
+- 端口被占用
+```
+
+**解决方案**：
+
+```
+方案1：保持连接
+1. 设置 → 开发者选项 → 保持唤醒（USB调试开启时）
+2. 设置 → 显示 → 休眠 → 永不
+3. App Inventor → Connect → Reset Connection
+
+方案2：使用USB连接
+1. 用USB线连接手机
+2. Connect → USB
+
+方案3：检查代码
+- 移除可能导致崩溃的代码
+- 添加错误处理
+
+方案4：更新Companion
+- Google Play更新到最新版本
+- 或卸载重装
+```
+
+---
+
+## 三、组件特定错误
+
+### 3.1 Bluetooth连接失败
+
+**错误信息**：
+```
+Bluetooth connection error
+```
+
+**解决方案**：
+
+```
+步骤1：基础检查
+- 确认目标设备已开启蓝牙
+- 确认目标设备可被发现
+- 确认蓝牙可见性未超时
+
+步骤2：权限检查
+Android 12+需要新权限：
+设置 → 应用 → AI2 Companion → 权限
+- 附近设备（必须）
+- 精确位置（必须）
+- 存储（如果需要文件传输）
+
+步骤3：配对设备
+必须先在系统设置中配对：
+设置 → 蓝牙 → 搜索设备 → 配对
+
+步骤4：代码检查
+// 正确流程
+当 Button_连接.被点击 时
+  // 1. 检查蓝牙是否开启
+  如果 BluetoothClient1.蓝牙已开启 = 假 则
+    调用 Notifier1.显示消息("请开启蓝牙")
+    调用 BluetoothClient1.开启蓝牙()
+    返回
+  如果结束
+  
+  // 2. 获取已配对设备
+  调用 BluetoothClient1.获取已配对设备()
+  设置 ListPicker1.Elements = BluetoothClient1.已配对设备
+
+当 ListPicker1.AfterPicking() 时
+  // 3. 连接选中设备
+  调用 BluetoothClient1.连接(ListPicker1.Selection)
+```
+
+---
+
+### 3.2 Web组件请求失败
+
+**错误信息**：
+```
+Web.GotText error: Illegal character
+```
+
+**原因分析**：
+```
+- URL包含非法字符
+- 中文未编码
+- 特殊符号未转义
+```
+
+**解决方案**：
+
+```
+错误示例：
+调用 Web1.发送文本请求(网址: "https://api.com/query?text=" + 用户输入)
+
+正确代码：
+// 编码URL参数
+调用 Web1.发送文本请求(
+  网址: "https://api.com/query?text=" + 
+        调用 Web1.UriEncode(用户输入)
+)
+
+// 或使用字典构建参数
+调用 Web1.发送文本请求(
+  网址: "https://api.com/query",
+  方法: "POST",
+  内容: "name=" + 调用 Web1.UriEncode(名字) + 
+        "&age=" + 年龄
+)
+```
+
+---
+
+### 3.3 文件操作失败
+
+**错误信息**：
+```
+Error: File 'xxx' not found
+Permission denied
+```
+
+**解决方案**：
+
+```
+步骤1：Android 11+存储限制
+Android 11+，只能访问：
+- 应用私有目录
+- 用户选择的文件（通过文件选择器）
+
+步骤2：使用ActivityStarter选择文件
+当 Button_选择文件.被点击 时
+  调用 ActivityStarter1.StartActivity()
+  设置 ActivityStarter1.Action = "android.intent.action.GET_CONTENT"
+  设置 ActivityStarter1.DataType = "image/*"
+
+当 ActivityStarter1.AfterActivity(结果) 时
+  如果 ActivityStarter1.ResultCode = -1 则
+    设置 全局变量 文件路径 = ActivityStarter1.ResultUri
+    调用 处理文件(全局变量 文件路径)
+  如果结束
+
+步骤3：使用File组件正确路径
+Android 11+：
+调用 File1.读取文件("/storage/emulated/0/Pictures/image.jpg")
+// 可能需要 READ_EXTERNAL_STORAGE 权限
+
+推荐方式：
+调用 File1.读取文件(调用 File1.DefaultFileDirectory() + "/image.jpg")
+```
+
+---
+
+### 3.4 通知发送失败
+
+**错误信息**：
+```
+Notification: Permission denied
+```
+
+**解决方案**：
+
+```
+Android 13+需要通知权限：
+
+当 Screen1.初始化 时
+  调用 权限扩展1.申请权限(["android.permission.POST_NOTIFICATIONS"])
+
+当 权限扩展1.权限结果(权限, 是否授予) 时
+  如果 是否授予 = 假 则
+    调用 Notifier1.显示消息("需要通知权限才能使用提醒功能")
+  如果结束
+
+发送通知：
+当 Button_发送通知.被点击 时
+  调用 NotificationExtension1.发送通知(
+    标题: "提醒",
+    内容: "您有一条新消息",
+    通知ID: 1
+  )
+```
+
+---
+
+## 四、扩展相关错误
+
+### 4.1 No Such Class Error
+
+**错误信息**：
+```
+Error: no such class: com.example.extension
+```
+
+**原因分析**：
+```
+- 扩展未正确导入
+- Companion需要重启
+- 扩展与AI2版本不兼容
+```
+
+**解决方案**：
+
+```
+步骤1：重启Companion
+1. 完全关闭AI2 Companion应用
+2. 从最近任务中滑出
+3. 重新打开App Inventor
+4. Connect → Reset Connection
+
+步骤2：重新导入扩展
+1. 删除当前扩展
+2. 重新下载扩展文件
+3. 重新导入
+
+步骤3：在Screen1中加载扩展
+确保在Screen1中也有该扩展的实例
+
+步骤4：构建APK测试
+有时Companion环境下的问题，构建APK后能解决
+```
+
+---
+
+### 4.2 扩展冲突
+
+**错误信息**：
+```
+DexException: DX Execution Failed
+```
+
+**原因分析**：
+```
+- 多个扩展使用相同的类名
+- 扩展依赖冲突
+- 扩展数量过多
+```
+
+**解决方案**：
+
+```
+步骤1：识别冲突扩展
+1. 备份项目
+2. 移除所有扩展
+3. 逐个添加扩展测试
+4. 找出冲突的扩展
+
+步骤2：减少扩展数量
+- 优先使用内置组件
+- 合并功能相似的扩展
+- 避免使用过多扩展
+
+步骤3：使用替代方案
+例如：
+- 使用内置Web组件代替HTTP扩展
+- 使用TinyDB代替第三方存储扩展
+```
+
+---
+
+### 4.3 扩展方法找不到
+
+**错误信息**：
+```
+Extension method not found
+```
+
+**解决方案**：
+
+```
+检查1：方法名称
+扩展方法名必须完全匹配
+错误：Call Extension1.MyMethod
+正确：Call Extension1.myMethod
+
+检查2：参数数量
+确保传入正确数量的参数
+
+检查3：扩展版本
+更新到最新版本的扩展
+
+检查4：组件名称
+确保使用的是扩展组件的实例名称
+```
+
+---
+
+## 五、预防措施
+
+### 5.1 开发习惯
+
+```
+1. 定期保存
+   - 每15分钟保存一次
+   - 重要修改前保存
+   - 使用Checkpoints
+
+2. 及时测试
+   - 添加新功能后立即测试
+   - 不要一次性添加太多
+   - 测试到构建APK成功
+
+3. 代码规范
+   - 添加错误处理
+   - 检查空值
+   - 避免无限循环
+
+4. 定期备份
+   - 每天导出.aia
+   - 保留多个版本
+   - 云端存储备份
+```
+
+### 5.2 问题排查流程
+
+```
+遇到错误时的检查顺序：
+
+1. 查看错误信息
+   - 记录完整错误内容
+   - 注意错误代码
+
+2. 重现问题
+   - 确定操作步骤
+   - 简化问题
+
+3. 搜索解决方案
+   - 社区搜索
+   - GitHub Issues
+
+4. 隔离问题
+   - 移除可疑代码
+   - 逐步添加测试
+
+5. 必要时求助
+   - 提供完整错误信息
+   - 提供复现步骤
+```
+
+---
+
+## 六、社区资源
+
+### 6.1 官方资源
+
+| 资源 | 链接 |
+|------|------|
+| 官方论坛 | community.appinventor.mit.edu |
+| GitHub Issues | github.com/mit-cml/appinventor-sources/issues |
+| 官方文档 | appinventor.mit.edu/reference |
+| 扩展列表 | mit-cml.github.io/extensions |
+
+### 6.2 常用搜索关键词
+
+```
+搜索技巧：
+- "Error: [具体错误]" 
+- "component name + error"
+- "Android version + issue"
+- "extension + not working"
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [Error 0x800710D2 accessing via USB cable to phone files](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [Blocks Options Missing](https://community.appinventor.mit.edu/t/blocks-options-missing/171677) - MIT App Inventor Community
+- [Matrix Error. Invalid dimension size: 0](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [Problem with aab and apk file](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub Issues](https://github.com/mit-cml/appinventor-sources/issues) - MIT CML
+
+### 版权声明
+本文档基于以下资源整理翻译，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+- GitHub Issues 版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

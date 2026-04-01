@@ -1,0 +1,228 @@
+---
+title: App Inventor 2 WebView高级教程
+description: "覆盖：JS交互、H5支付、微信小程序、内嵌网页、DOM操作"
+---
+
+
+# App Inventor 2 WebView高级教程
+
+> 覆盖：JS交互、H5支付、微信小程序、内嵌网页、DOM操作
+
+---
+
+## 一、WebView基础回顾
+
+### 1.1 核心方法
+
+| 方法 | 说明 |
+|------|------|
+| 加载URL | 加载网页 |
+| 加载HTML | 加载HTML内容 |
+| 执行JavaScript | 执行JS代码 |
+| 取WebViewString | 获取JS返回值 |
+
+### 1.2 基础用法
+
+```
+当 Screen1.初始化 时
+  调用 Web查看器1.加载URL("https://www.fun123.cn")
+
+当 Web查看器1.页面加载完成 时（网页标题）
+  设置 标签_标题.文本 = 网页标题
+```
+
+---
+
+## 二、JavaScript交互
+
+### 2.1 App调用JS
+
+```
+// 调用JS函数
+当 按钮_调用JS.被点击 时
+  调用 Web查看器1.执行JavaScript(
+    "document.getElementById('result').innerText = 'Hello from App!';"
+  )
+
+// 调用JS函数并获取返回值
+当 按钮_获取值.被点击 时
+  调用 Web查看器1.执行JavaScript(
+    "getElementById('input').value"
+  )
+
+当 Web查看器1.JavaScript执行完成 时（结果）
+  设置 标签_返回值.文本 = 结果
+```
+
+### 2.2 JS回调App
+
+```
+// 在网页中添加回调代码
+var script = `
+  function callApp(data) {
+    // 调用App Inventor的方法
+    AppInventor.setWebViewString(JSON.stringify(data));
+  }
+`;
+Web查看器1.执行JavaScript(script)
+
+// App端接收
+当 Web查看器1.WebViewString改变 时（新值）
+  初始化局部变量 数据 = 调用 字典.JSON转字典(新值)
+  设置 标签_回调.文本 = 获取键的值(数据, "message", "")
+```
+
+---
+
+## 三、H5支付集成
+
+### 3.1 支付宝支付
+
+```
+// App端：拼接支付URL
+定义 发起支付宝支付(订单号, 金额)
+  初始化局部变量 支付URL = 合并字符串(
+    "alipay://alipayclient/?",
+    "biz_content=%7B%22out_trade_no%22%3A%22", 订单号, 
+    "%22%2C%22total_amount%22%3A%22", 金额,
+    "%22%2C%22subject%22%3A%22App%E4%B8%AD%E5%BA%AF%E6%94%AF%E4%BB%98%22%7D",
+    "&biz_context=%7B%22sc%22%3A%22tpnull%22%7D"
+  )
+  
+  调用 活动启动器1.启动活动()
+    数据URI = 支付URL
+
+// 支付结果回调
+当 活动启动器1.活动完成 时（结果）
+  初始化局部变量 状态 = 获取键的值(调用 字典.JSON转字典(结果), "resultStatus", "")
+  如果 状态 = "9000" 则
+    调用 对话框1.显示消息对话框("支付成功", "提示", "确定")
+```
+
+### 3.2 微信支付
+
+微信支付需要公众号/小程序资质，App内建议使用微信SDK
+
+---
+
+## 四、微信小程序嵌入
+
+### 4.1 URL Scheme唤起
+
+```
+// 生成微信小程序URL Scheme
+定义 生成微信小程序链接(页面路径, 参数)
+  返回 合并字符串(
+    "weixin://dl/business/?",
+    "path=", 页面路径,
+    "&query=", 参数
+  )
+```
+
+### 4.2 Universal Link
+
+iOS使用Universal Link跳转
+
+---
+
+## 五、网页数据抓取
+
+### 5.1 获取网页内容
+
+```
+当 按钮_获取数据.被点击 时
+  调用 Web客户端1.发送GET请求("https://api.example.com/data")
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    初始化局部变量 数据 = 调用 字典.JSON转字典(响应内容)
+    设置 标签_结果.文本 = 获取键的值(数据, "content", "")
+```
+
+### 5.2 注入JS抓取
+
+```
+定义 抓取网页数据()
+  调用 Web查看器1.执行JavaScript(
+    "JSON.stringify({title: document.title, links: Array.from(document.querySelectorAll('a')).map(a => a.href)})"
+  )
+
+当 Web查看器1.JavaScript执行完成 时（结果）
+  初始化局部变量 数据 = 调用 字典.JSON转字典(结果)
+  设置 标签_链接数.文本 = 列表长度(获取键的值(数据, "links", []))
+```
+
+---
+
+## 六、高级：内嵌App功能
+
+### 6.1 分享功能
+
+```
+// JS调用App的分享
+var shareBtn = document.getElementById('share');
+shareBtn.onclick = function() {
+  AppInventor.setWebViewString(JSON.stringify({
+    action: 'share',
+    title: document.title,
+    url: window.location.href
+  }));
+};
+```
+
+App端接收处理
+
+```
+当 Web查看器1.WebViewString改变 时（新值）
+  初始化局部变量 命令 = 获取键的值(调用 字典.JSON转字典(新值), "action", "")
+  
+  如果 命令 = "分享" 则
+    初始化局部变量 标题 = 获取键的值(调用 字典.JSON转字典(新值), "title", "")
+    初始化局部变量 链接 = 获取键的值(调用 字典.JSON转字典(新值), "url", "")
+    // 调用系统分享
+    调用 短信1.发送短信(链接, "分享链接")
+```
+
+---
+
+## 七、常见问题
+
+### Q1：WebView不显示？
+
+检查网络权限和https链接
+
+### Q2：JS交互失败？
+
+确保网页已加载完成后再执行JS
+
+### Q3：支付跳转失败？
+
+需要安装对应支付App
+
+---
+
+## 参考资料
+
+- [WebView组件文档](https://www.fun123.cn/reference/components/userinterface.html#WebViewer)
+- [微信支付文档](https://pay.weixin.qq.com)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

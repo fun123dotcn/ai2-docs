@@ -1,0 +1,229 @@
+---
+title: App Inventor 2 长页面与滚动布局教程
+description: "覆盖：垂直/水平滚动布局、滚动到指定位置、下拉刷新、分页加载。"
+---
+
+
+# App Inventor 2 长页面与滚动布局教程
+
+> 覆盖：垂直/水平滚动布局、滚动到指定位置、下拉刷新、分页加载。
+
+---
+
+## 一、滚动布局基础
+
+### 1.1 启用滚动
+
+在设计器中，选中**垂直布局**或**水平布局**，勾选属性：
+- **垂直滚动（Scrollable）** → 垂直布局变为可上下滚动
+- **水平滚动** → 水平布局变为可左右滚动
+
+> ⚠️ 注意：Screen1 本身也有 `可滚动` 属性，开启后整个屏幕可滚动。
+
+### 1.2 Screen级别滚动
+
+```
+// 在设计器中设置 Screen1.可滚动 = 真
+// 或在代码块中：
+设置 Screen1.可滚动 = 真
+```
+
+开启后，Screen内所有内容可以整体上下滚动，适合内容较多的单页面。
+
+---
+
+## 二、垂直滚动布局
+
+### 2.1 基本用法
+
+```
+// 设计器中：
+// 1. 拖入"垂直布局"
+// 2. 勾选"可滚动"属性
+// 3. 高度设为"充满父级"或固定高度
+// 4. 在布局内添加任意多的内容
+
+// 代码块中动态添加内容（配合DynamicComponents扩展）
+当 按钮_加载更多.被点击 时
+  对于 i 从 1 到 10 步长 1
+    // 动态创建标签
+    调用 DynamicComponents1.创建(垂直布局_内容, "标签", 合并字符串("item_", i))
+    调用 DynamicComponents1.设置属性("item_" + i, "文本", 合并字符串("第", i, "条内容"))
+```
+
+### 2.2 滚动到底部
+
+```
+// 方法：将最后一个组件滚动到可见区域
+// App Inventor 2 原生不支持直接滚动到指定位置
+// 变通方案：使用WebView + JavaScript
+
+// 方案一：WebView滚动
+调用 Web查看器1.执行脚本("window.scrollTo(0, document.body.scrollHeight)")
+
+// 方案二：使用ScrollHandler扩展
+调用 ScrollHandler1.滚动到底部(垂直布局_内容)
+调用 ScrollHandler1.滚动到顶部(垂直布局_内容)
+调用 ScrollHandler1.滚动到位置(垂直布局_内容, 500)    // 滚动到500px位置
+```
+
+---
+
+## 三、水平滚动布局（横向滑动）
+
+### 3.1 横向Tab切换
+
+```
+// 设计器：水平布局 + 勾选"可滚动"
+// 内部放多个等宽的内容块
+
+// 代码块：动态生成横向卡片
+当 Screen1.初始化 时
+  初始化局部变量 分类列表 = ["全部", "科技", "体育", "娱乐", "财经", "教育"]
+  对于 每个 分类 在 分类列表 中
+    // 动态创建按钮
+    调用 DynamicComponents1.创建(水平布局_分类, "按钮", 合并字符串("tab_", 分类))
+    调用 DynamicComponents1.设置属性(合并字符串("tab_", 分类), "文本", 分类)
+    调用 DynamicComponents1.设置属性(合并字符串("tab_", 分类), "宽度", 80)
+```
+
+---
+
+## 四、下拉刷新
+
+App Inventor 2 原生不支持下拉刷新，有以下方案：
+
+### 4.1 方案一：按钮刷新（简单）
+
+```
+// 顶部放一个"刷新"按钮
+当 按钮_刷新.被点击 时
+  设置 标签_状态.文本 = "刷新中..."
+  调用 加载数据()
+
+定义 加载数据()
+  调用 Web客户端1.发送GET请求("https://api.example.com/data")
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  调用 渲染列表(响应内容)
+  设置 标签_状态.文本 = ""
+```
+
+### 4.2 方案二：WebView下拉刷新
+
+```html
+<!-- 在WebView中实现下拉刷新 -->
+<div id="pull-to-refresh">
+  <div id="ptr-indicator">↓ 下拉刷新</div>
+  <div id="content">
+    <!-- 内容区域 -->
+  </div>
+</div>
+<script>
+  let startY = 0;
+  document.addEventListener('touchstart', e => startY = e.touches[0].clientY);
+  document.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - startY > 80 && window.scrollY === 0) {
+      document.getElementById('ptr-indicator').textContent = '刷新中...';
+      // 通知App Inventor刷新
+      window.AppInventor.setWebViewString('REFRESH');
+    }
+  });
+</script>
+```
+
+```
+// App Inventor 2 接收WebView消息
+当 Web查看器1.WebViewStringChange 时（新值）
+  如果 新值 = "REFRESH" 则
+    调用 加载数据()
+```
+
+---
+
+## 五、分页加载（无限滚动）
+
+```
+初始化全局变量 当前页 = 1
+初始化全局变量 每页数量 = 20
+初始化全局变量 加载中 = 假
+初始化全局变量 没有更多 = 假
+
+// 加载一页数据
+定义 加载一页(页码)
+  如果 全局变量 加载中 = 真 或 全局变量 没有更多 = 真 则 返回
+  
+  设置 全局变量 加载中 = 真
+  设置 标签_加载状态.文本 = "加载中..."
+  
+  调用 Web客户端1.发送GET请求(
+    合并字符串("https://api.example.com/list?page=", 页码, "&size=", 全局变量 每页数量)
+  )
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 数据 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 列表 = 获取键的值(数据, "list", [])
+  
+  // 追加到现有列表
+  调用 渲染追加(列表)
+  
+  // 判断是否还有更多
+  如果 列表长度(列表) < 全局变量 每页数量 则
+    设置 全局变量 没有更多 = 真
+    设置 标签_加载状态.文本 = "没有更多了"
+  否则
+    设置 标签_加载状态.文本 = ""
+  
+  设置 全局变量 加载中 = 假
+
+// 加载更多按钮
+当 按钮_加载更多.被点击 时
+  设置 全局变量 当前页 = 全局变量 当前页 + 1
+  调用 加载一页(全局变量 当前页)
+```
+
+---
+
+## 六、常见问题
+
+### Q1：垂直布局勾选可滚动后内容还是不滚动？
+
+- 确认布局高度设置了固定值或"充满父级"（不能是"自动"）
+- 内容高度必须超过布局高度才会出现滚动
+
+### Q2：如何让列表自动滚动到新增内容？
+
+使用 ScrollHandler 扩展的 `滚动到底部` 方法，或在 WebView 中用 JS 实现。
+
+### Q3：Screen.可滚动 和 垂直布局.可滚动 有什么区别？
+
+- `Screen.可滚动`：整个屏幕内容可滚动，底部导航栏也会被滚走
+- `垂直布局.可滚动`：只有该布局内部滚动，底部导航栏固定不动（推荐）
+
+---
+
+## 参考资料
+
+- [App Inventor 2 布局组件文档](https://www.fun123.cn/reference/components/layout.html)
+- [DynamicComponents扩展教程](dynamic_components_tutorial.html)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

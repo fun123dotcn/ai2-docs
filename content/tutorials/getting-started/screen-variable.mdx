@@ -1,0 +1,156 @@
+---
+title: "App Inventor 2 不同Screen变量互通教程"
+description: "// Screen1：发送数据 当 Button_GoToScreen2.被点击 时 调用 打开另一个屏幕并传值( 屏幕名称: \"Screen2\", 启动值: TextBox_Name.文本 )"
+---
+
+
+# App Inventor 2 不同Screen变量互通教程
+
+---
+
+## 一、方法对比
+
+| 方法 | 数据类型 | 持久化 | 推荐度 |
+|------|---------|--------|--------|
+| 启动值(StartValue) | 文本 | ❌ | ⭐⭐⭐ |
+| TinyDB共享 | 任意 | ✅ | ⭐⭐⭐⭐⭐ |
+| 文件共享 | 文本/JSON | ✅ | ⭐⭐⭐ |
+| 全局变量 | 仅本Screen | ❌ | ❌ |
+
+---
+
+## 二、启动值传递（最简单）
+
+### Screen1 → Screen2
+
+```
+// Screen1：发送数据
+当 Button_GoToScreen2.被点击 时
+  调用 打开另一个屏幕并传值(
+    屏幕名称: "Screen2",
+    启动值: TextBox_Name.文本
+  )
+
+// Screen2：接收数据
+当 Screen2.初始化 时
+  设置 全局变量 接收到的名称 = 获取启动值()
+  设置 Label_Name.文本 = "你好，" + 全局变量 接收到的名称
+```
+
+### 传递复杂数据（JSON）
+
+```
+// Screen1：发送JSON
+当 Button_GoToScreen2.被点击 时
+  设置 全局变量 数据 = {
+    "name": TextBox_Name.文本,
+    "age": TextBox_Age.文本,
+    "score": 全局变量 分数
+  }
+  
+  调用 打开另一个屏幕并传值(
+    屏幕名称: "Screen2",
+    启动值: 调用 JSON.字典转JSON(全局变量 数据)
+  )
+
+// Screen2：接收JSON
+当 Screen2.初始化 时
+  设置 全局变量 JSON文本 = 获取启动值()
+  设置 全局变量 数据 = 调用 JSON.文本转字典(全局变量 JSON文本)
+  
+  设置 Label_Name.文本 = 获取键的值(全局变量 数据, "name", "")
+  设置 Label_Age.文本 = 获取键的值(全局变量 数据, "age", "")
+```
+
+---
+
+## 三、TinyDB共享（推荐）
+
+```
+// Screen1：写入数据
+过程 保存共享数据(键, 值)
+  调用 TinyDB1.存储值(标签: "shared_" + 键, 值为标签: 值)
+过程结束
+
+当 Button_Save.被点击 时
+  调用 保存共享数据("user_name", TextBox_Name.文本)
+  调用 保存共享数据("user_score", 全局变量 分数)
+  调用 打开另一个屏幕("Screen2")
+
+// Screen2：读取数据
+过程 读取共享数据(键, 默认值)
+  返回 TinyDB1.获取值(标签: "shared_" + 键, 值为标签默认: 默认值)
+过程结束
+
+当 Screen2.初始化 时
+  设置 全局变量 用户名 = 调用 读取共享数据("user_name", "")
+  设置 全局变量 分数 = 调用 读取共享数据("user_score", 0)
+  
+  设置 Label_Name.文本 = 全局变量 用户名
+  设置 Label_Score.文本 = 全局变量 分数
+```
+
+---
+
+## 四、返回值传递
+
+```
+// Screen2：返回数据给Screen1
+当 Button_Back.被点击 时
+  调用 关闭屏幕并返回值(
+    结果: 调用 JSON.字典转JSON({
+      "result": "success",
+      "data": TextBox_Result.文本
+    })
+  )
+
+// Screen1：接收返回值
+当 Screen1.获取另一个屏幕的结果(屏幕名称, 结果) 时
+  如果 屏幕名称 = "Screen2" 则
+    设置 全局变量 返回数据 = 调用 JSON.文本转字典(结果)
+    设置 Label_Result.文本 = 获取键的值(全局变量 返回数据, "data", "")
+  如果结束
+```
+
+---
+
+## 五、最佳实践
+
+```
+// 统一数据管理器（在每个Screen都添加TinyDB）
+过程 设置全局变量(键, 值)
+  调用 TinyDB1.存储值(标签: "global_" + 键, 值为标签: 值)
+过程结束
+
+过程 获取全局变量(键, 默认值)
+  返回 TinyDB1.获取值(标签: "global_" + 键, 值为标签默认: 默认值)
+过程结束
+
+// 使用示例
+调用 设置全局变量("current_user", "张三")
+调用 设置全局变量("login_time", 调用 时钟1.获取时间毫秒())
+
+// 在任意Screen读取
+设置 全局变量 用户名 = 调用 获取全局变量("current_user", "")
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

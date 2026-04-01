@@ -1,0 +1,443 @@
+---
+title: "App Inventor 2 扩展常见问题与解决方案"
+description: "**错误信息**： Error: no such class: com.example.myextension"
+---
+
+
+# App Inventor 2 扩展常见问题与解决方案
+
+---
+
+## 一、扩展基础问题
+
+### 1.1 什么是扩展？
+
+```
+扩展（Extension）是App Inventor的插件
+用于添加内置组件不支持的功能
+
+常见扩展来源：
+- MIT官方扩展（BLE、Posenet等）
+- 第三方开发者（Taifun、Pura Vida等）
+- 开源社区
+
+文件格式：.aix
+```
+
+### 1.2 如何安装扩展
+
+```
+步骤1：下载.aix文件
+步骤2：App Inventor → 扩展 → 导入扩展
+步骤3：上传.aix文件
+步骤4：从组件面板拖出扩展组件
+```
+
+---
+
+## 二、常见错误与解决
+
+### 2.1 No Such Class Error（最常见）
+
+**错误信息**：
+```
+Error: no such class: com.example.myextension
+```
+
+**原因分析**：
+```
+- Companion未重启
+- 扩展未正确加载
+- 缓存问题
+```
+
+**解决方案**：
+
+```
+方案1：重启Companion（最有效）
+1. 完全关闭AI2 Companion
+2. 从最近任务中滑出
+3. 重新打开App Inventor
+4. Connect → Reset Connection
+
+方案2：重新导入扩展
+1. 删除项目中的扩展
+2. 重新下载.aix文件
+3. 重新导入
+
+方案3：在Screen1添加扩展
+有些扩展需要在Screen1中初始化
+确保在Screen1中也有该扩展实例
+
+方案4：构建APK测试
+Companion环境的问题，构建APK后通常能解决
+```
+
+---
+
+### 2.2 Extension Not Found
+
+**错误信息**：
+```
+Unable to find extension: xxx
+```
+
+**原因分析**：
+```
+- 扩展文件名被修改
+- 扩展损坏
+- 版本不兼容
+```
+
+**解决方案**：
+
+```
+1. 检查.aix文件
+   - 确保文件名未被修改
+   - 尝试重新下载
+
+2. 检查兼容性
+   - 确认扩展支持您的AI2版本
+   - 查看扩展说明
+
+3. 清理浏览器缓存
+   Chrome: Ctrl+Shift+Delete
+```
+
+---
+
+### 2.3 方法找不到（Method Not Found）
+
+**错误信息**：
+```
+Extension method not found
+```
+
+**原因分析**：
+```
+- 方法名拼写错误
+- 参数数量不对
+- 扩展版本问题
+```
+
+**解决方案**：
+
+```
+1. 检查方法名称
+   // 错误示例
+   调用 Extension1.GETDATA()  // 大小写错误
+   
+   // 正确示例
+   调用 Extension1.getData()
+
+2. 检查参数
+   // 查看扩展文档
+   // 确保传入正确数量和类型的参数
+
+3. 更新扩展
+   // 下载最新版本的扩展
+```
+
+---
+
+## 三、扩展冲突
+
+### 3.1 DX Execution Failed
+
+**错误信息**：
+```
+DexException: DX execution failed
+Multiple extensions contain a class with the same name
+```
+
+**原因分析**：
+```
+多个扩展使用相同的类名
+导致编译冲突
+```
+
+**解决方案**：
+
+```
+步骤1：识别冲突
+1. 备份项目
+2. 移除所有扩展
+3. 逐个添加扩展测试
+4. 找出冲突的组合
+
+步骤2：减少扩展数量
+- 优先使用内置组件
+- 删除不必要的扩展
+- 合并功能
+
+步骤3：查找替代扩展
+- 选择功能相似的不同扩展
+- 避免使用同一开发者可能有冲突的扩展
+```
+
+### 3.2 特定冲突组合
+
+```
+已知冲突：
+1. Helios + Vishwas扩展
+   解决：只能使用其中一个开发者的扩展
+
+2. 多个音频处理扩展
+   解决：只用一个
+
+3. 多个文件管理扩展
+   解决：只用一个
+```
+
+---
+
+## 四、版本兼容问题
+
+### 4.1 Android版本问题
+
+```
+不同Android版本的问题：
+
+Android 12+:
+- 需要新权限（精确闹钟等）
+- RECEIVER_EXPORTED要求
+
+Android 13+:
+- 需要通知权限
+- POST_NOTIFICATIONS
+
+Android 14+:
+- 存储限制更严格
+- 照片选择器要求
+```
+
+**解决方案**：
+```
+在扩展使用前申请权限：
+
+当 Screen1.初始化 时
+  调用 权限扩展1.申请权限([
+    "android.permission.POST_NOTIFICATIONS",
+    "android.permission.SCHEDULE_EXACT_ALARM",
+    "android.permission.READ_MEDIA_IMAGES"
+  ])
+```
+
+### 4.2 App Inventor版本
+
+```
+确保扩展与AI2版本兼容：
+- nb185+ (2021)
+- nb188+ (2022)
+- nb191+ (2023-2024)
+- 最新版本
+
+更新方法：
+1. 清除浏览器缓存
+2. 刷新页面
+3. 重新连接Companion
+```
+
+---
+
+## 五、扩展推荐与问题
+
+### 5.1 MIT官方扩展
+
+| 扩展 | 功能 | 问题 | 解决 |
+|------|------|------|------|
+| BluetoothLE | BLE蓝牙 | iOS支持有限 | 详见iOS指南 |
+| FaceMesh | 人脸特征点 | 需要好光线 | 预处理图片 |
+| Posenet | 姿态识别 | 性能消耗大 | 降低分辨率 |
+| Look | 物体识别 | 模型较大 | 压缩模型 |
+| Microbit | 蓝牙控制 | 需要配对 | 按说明操作 |
+
+### 5.2 第三方优质扩展
+
+```
+Taifun系列（推荐）：
+- TaifunDatabase - 高级数据库
+- TaifunFile - 增强文件操作
+- TaifunImage - 图片处理
+- TaifunLocation - 高级定位
+
+Pura Vida Apps：
+- AlarmManager - 定时任务
+- FTP - 文件传输
+- NotificationListener - 通知监听
+- SQLite - 本地数据库
+```
+
+### 5.3 有问题的扩展
+
+```
+不建议使用：
+1. 过时的HTTP扩展
+   → 使用内置Web组件
+
+2. 非官方的蓝牙SPP
+   → 使用BluetoothLE
+
+3. 来路不明的扩展
+   → 安全风险
+
+4. 已知有Bug的扩展
+   → 查看社区反馈
+```
+
+---
+
+## 六、扩展调试技巧
+
+### 6.1 添加日志
+
+```
+过程 调试日志(消息)
+  // 显示在界面上
+  设置 Label_Debug.文本 = Label_Debug.文本 + "\n" + 
+    调用 时钟1.FormatDateTime(调用 时钟1.Now(), "HH:mm:ss") + 
+    " | " + 消息
+过程结束
+
+使用：
+调用 调试日志("扩展初始化开始")
+调用 扩展1.方法()
+调用 调试日志("方法调用完成")
+```
+
+### 6.2 隔离测试
+
+```
+测试扩展的完整流程：
+
+1. 创建测试项目
+2. 只添加一个扩展
+3. 编写最简单的测试代码
+4. 构建APK测试
+
+示例（测试TaifunFile）：
+当 Button_测试.被点击 时
+  调用 调试日志("开始测试")
+  
+  调用 文件扩展1.读取文件("/sdcard/test.txt")
+  
+当 文件扩展1.读取完成(内容) 时
+  调用 调试日志("读取成功: " + 文本取部分(内容, 1, 50))
+  
+当 文件扩展1.读取失败(错误) 时
+  调用 调试日志("读取失败: " + 错误)
+```
+
+### 6.3 查看扩展文档
+
+```
+扩展通常附带文档，查找方法：
+
+1. 扩展开发者网站
+   - puravidaapps.com
+   - community.appinventor.mit.edu
+
+2. GitHub仓库
+   - 扩展的源代码和文档
+
+3. AI2伴侣论坛
+   - 其他用户的经验贴
+
+4. 直接查看.aix信息
+   - 解压.aix文件
+   - 查看assets文件夹中的文档
+```
+
+---
+
+## 七、扩展开发注意事项
+
+### 7.1 如果自己开发扩展
+
+```
+开发扩展的要点：
+
+1. 使用App Inventor SDK
+2. 遵循组件规范
+3. 测试多种设备
+4. 提供完整文档
+5. 考虑兼容性问题
+```
+
+### 7.2 扩展安全性
+
+```
+使用扩展时的安全考虑：
+
+1. 只从可信来源下载
+   - MIT官网
+   - 知名开发者
+   - GitHub官方仓库
+
+2. 避免权限过大的扩展
+   - 检查所需权限
+   - 拒绝不合理的权限请求
+
+3. 查看源代码（如果开源）
+   - 检查是否有恶意代码
+   - 确保不收集用户数据
+
+4. 定期更新
+   - 关注开发者更新
+   - 及时更新到最新版本
+```
+
+---
+
+## 八、总结
+
+### 8.1 常见问题快速解决
+
+| 问题 | 快速解决 |
+|------|---------|
+| No such class | 重启Companion |
+| 方法找不到 | 检查大小写 |
+| DX失败 | 移除冲突扩展 |
+| 权限错误 | 申请相应权限 |
+| 版本不兼容 | 更新AI2/扩展 |
+
+### 8.2 扩展使用原则
+
+```
+1. 优先使用内置组件
+   内置组件最稳定、兼容性最好
+
+2. 选择成熟扩展
+   优先MIT官方或知名开发者
+
+3. 避免过多扩展
+   扩展越多，问题越多
+
+4. 定期测试构建
+   确保APK能正常构建
+
+5. 关注社区反馈
+   了解扩展的已知问题
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [How to avoid runtime errors with the companion app](https://puravidaapps.com/extensions.php) - Pura Vida Apps by Taifun
+- [MIT App Inventor Extensions](https://mit-cml.github.io/extensions/) - MIT App Inventor
+- [Extension Development](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [I need help merging two extension projects into one](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+
+### 版权声明
+本文档基于以下资源整理翻译，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- Pura Vida Apps 扩展文档版权归 Taifun 所有
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

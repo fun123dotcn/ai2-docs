@@ -1,0 +1,480 @@
+---
+title: App Inventor 2 迷你高尔夫游戏完整教程
+description: 登录 App Inventor，创建新项目 **MiniGolf**
+---
+
+
+# App Inventor 2 迷你高尔夫游戏完整教程
+
+---
+
+## 一、项目概述
+
+本教程教你构建一个 **迷你高尔夫游戏**，包含完整的游戏机制。
+
+**难度**：中级
+
+**核心组件**：Canvas、Ball、Sprite、Clock
+
+**学习收获**：
+- Fling、TouchUp、TouchDown 手势处理
+- Sprite 碰撞检测
+- 动态精灵定位
+- 游戏计分系统
+
+---
+
+## 二、第一部分：基础球体响应
+
+### 2.1 创建项目
+
+登录 App Inventor，创建新项目 **MiniGolf**
+
+### 2.2 Screen设置
+
+**关键设置**：取消 "Scrollable" 勾选
+```
+原因：需要精确的屏幕高度来设置球场
+```
+
+### 2.3 组件设计
+
+| 组件类型 | 名称 | 用途 | 属性 |
+|---------|------|------|------|
+| Canvas | Canvas1 | 高尔夫球场 | Height: 300, Width: FillParent, BackgroundColor: Green |
+| Ball | GolfBall | 球 | Radius: 10, Speed: 0, Interval: 1, Z: 2 |
+| Ball | Hole | 球洞 | Radius: 15, Color: Black, Speed: 0 |
+| Clock | Clock1 | 控制球的移动 | TimerAlwaysFires: 真, TimerEnabled: 真, TimerInterval: 100 |
+
+### 2.4 球的抛掷（Fling事件）
+
+**Fling事件参数**：
+- x, y：手指位置
+- speed：抛掷速度
+- heading：方向（度数）
+- xvel, yvel：x/y方向速度
+
+```
+当 GolfBall.抛掷(x, y, speed, heading, xvel, yvel) 时
+  设置 GolfBall.Heading = heading
+  设置 GolfBall.Speed = speed * 1.5
+  // 适当加速以匹配真实高尔夫球
+```
+
+### 2.5 减速机制（Clock定时器）
+
+```
+当 Clock1.定时 时
+  如果 GolfBall.Speed > 0 则
+    设置 GolfBall.Speed = GolfBall.Speed * 0.95
+    // 每次计时器触发，减速5%
+  否则
+    设置 GolfBall.Speed = 0
+  如果结束
+```
+
+### 2.6 检测进洞
+
+```
+当 GolfBall.碰撞(other) 时
+  如果 other = Hole 则
+    // 球进洞了！
+    设置 GolfBall.Visible = 假
+    调用 Notifier1.显示消息框("太棒了！你进洞了！")
+    // 重置球的位置
+    设置 GolfBall.X = Canvas1.Width / 2
+    设置 GolfBall.Y = Canvas1.Height - 50
+    设置 GolfBall.Visible = 真
+    设置 GolfBall.Speed = 0
+  如果结束
+```
+
+### 2.7 边界反弹
+
+```
+当 GolfBall.到达边缘(边缘) 时
+  如果 边缘 = "left" 则
+    设置 GolfBall.Heading = 180 - GolfBall.Heading
+  否则如果 边缘 = "right" 则
+    设置 GolfBall.Heading = 180 - GolfBall.Heading
+  否则如果 边缘 = "top" 则
+    设置 GolfBall.Heading = 360 - GolfBall.Heading
+  否则如果 边缘 = "bottom" 则
+    设置 GolfBall.Heading = 360 - GolfBall.Heading
+  如果结束
+```
+
+---
+
+## 三、第二部分：计分系统
+
+### 3.1 添加UI组件
+
+| 组件类型 | 名称 | 用途 |
+|---------|------|------|
+| HorizontalArrangement | HorizontalArrangement1 | 包含计分标签 |
+| Label | LabelScore | 显示总杆数 |
+| Label | LabelStroke | 显示当前洞杆数 |
+
+### 3.2 变量初始化
+
+```
+全局变量 StrokeCount = 0  // 当前洞杆数
+全局变量 Score = 0         // 总杆数
+```
+
+### 3.3 抛掷时增加杆数
+
+```
+当 GolfBall.抛掷(x, y, speed, heading, xvel, yvel) 时
+  设置 StrokeCount = StrokeCount + 1
+  设置 Score = Score + 1
+  设置 LabelStroke.Text = "本洞: " + StrokeCount
+  设置 LabelScore.Text = "总杆数: " + Score
+  // ... 原有抛掷代码
+```
+
+### 3.4 进洞时重置当前洞
+
+```
+当 GolfBall.碰撞(other) 时
+  如果 other = Hole 则
+    设置 StrokeCount = 0
+    设置 LabelStroke.Text = "本洞: 0"
+    // ... 原有进洞代码
+  如果结束
+```
+
+---
+
+## 四、第三部分：球座定位
+
+### 4.1 添加球座和方向按钮
+
+| 组件类型 | 名称 | 用途 | 属性 |
+|---------|------|------|------|
+| ImageSprite | Tee | 球座区域 | 上传 tee_graphic.png |
+| ImageSprite | LeftSprite | 左移按钮 | 上传 left_arrow.jpg |
+| ImageSprite | RightSprite | 右移按钮 | 上传 right_arrow.jpg |
+
+### 4.2 动态设置球场
+
+```
+过程 设置球场()
+  // 根据屏幕大小设置Canvas
+  设置 Canvas1.Height = Screen1.Height - 200
+  设置 Canvas1.Width = Screen1.Width
+  
+  // 设置球座位置
+  设置 Tee.X = Canvas1.Width / 2 - 50
+  设置 Tee.Y = Canvas1.Height - 100
+  
+  // 设置球洞位置
+  设置 Hole.X = Canvas1.Width / 2
+  设置 Hole.Y = 100
+  
+  // 设置高尔夫球初始位置
+  设置 GolfBall.X = Canvas1.Width / 2
+  设置 GolfBall.Y = Canvas1.Height - 100
+过程结束
+
+当 Screen1.初始化 时
+  调用 设置球场()
+```
+
+### 4.3 方向按钮控制
+
+**变量**：
+```
+全局变量 MoveLeft = 假
+全局变量 MoveRight = 假
+全局变量 BallOnTee = 真  // 球是否在球座上
+```
+
+**左按钮按下**：
+```
+当 LeftSprite.触摸开始(x, y) 时
+  设置 MoveLeft = 真
+当 LeftSprite.触摸结束(x, y) 时
+  设置 MoveLeft = 假
+```
+
+**右按钮按下**：
+```
+当 RightSprite.触摸开始(x, y) 时
+  设置 MoveRight = 真
+当 RightSprite.触摸结束(x, y) 时
+  设置 MoveRight = 假
+```
+
+### 4.4 移动球的过程
+
+```
+过程 在球座上移动球()
+  // 仅在球座上时响应
+  如果 BallOnTee = 假 则
+    // 正常移动球的代码
+    返回
+  如果结束
+  
+  // 左移
+  如果 MoveLeft = 真 则
+    如果 GolfBall.X > Tee.X + 10 则
+      设置 GolfBall.X = GolfBall.X - 5
+    如果结束
+  如果结束
+  
+  // 右移
+  如果 MoveRight = 真 则
+    如果 GolfBall.X < Tee.X + Tee.Width - 10 则
+      设置 GolfBall.X = GolfBall.X + 5
+    如果结束
+  如果结束
+过程结束
+```
+
+### 4.5 整合计时器
+
+```
+当 Clock1.定时 时
+  // 仅在球座上时用移动球的过程
+  如果 BallOnTee = 真 则
+    调用 在球座上移动球()
+    调用 Clock1.停止()
+    返回
+  如果结束
+  
+  // 正常减速
+  如果 GolfBall.Speed > 0 则
+    设置 GolfBall.Speed = GolfBall.Speed * 0.95
+  否则
+    设置 GolfBall.Speed = 0
+    // 球停了，回到球座
+    设置 BallOnTee = 真
+    调用 Clock1.停止()
+  如果结束
+```
+
+### 4.6 抛掷时离开球座
+
+```
+当 GolfBall.抛掷(x, y, speed, heading, xvel, yvel) 时
+  // 仅在球座上时才能抛掷
+  如果 BallOnTee = 真 则
+    设置 BallOnTee = 假
+    设置 GolfBall.Heading = heading
+    设置 GolfBall.Speed = speed * 1.5
+    设置 StrokeCount = StrokeCount + 1
+    设置 Score = Score + 1
+    设置 LabelStroke.Text = "本洞: " + StrokeCount
+    设置 LabelScore.Text = "总杆数: " + Score
+    调用 Clock1.启动()
+  如果结束
+```
+
+---
+
+## 五、完整变量和过程
+
+### 5.1 全局变量
+
+```
+全局变量 StrokeCount = 0
+全局变量 Score = 0
+全局变量 MoveLeft = 假
+全局变量 MoveRight = 假
+全局变量 BallOnTee = 真
+```
+
+### 5.2 完整事件处理
+
+```
+当 Screen1.初始化 时
+  调用 设置球场()
+  调用 重置本洞()
+  调用 Clock1.停止()
+
+过程 设置球场()
+  设置 Canvas1.Height = Screen1.Height - 200
+  设置 Canvas1.Width = Screen1.Width
+  设置 Tee.X = Canvas1.Width / 2 - 50
+  设置 Tee.Y = Canvas1.Height - 100
+  设置 Hole.X = Canvas1.Width / 2
+  设置 Hole.Y = 100
+  设置 GolfBall.X = Canvas1.Width / 2
+  设置 GolfBall.Y = Canvas1.Height - 100
+过程结束
+
+过程 重置本洞()
+  设置 StrokeCount = 0
+  设置 LabelStroke.Text = "本洞: 0"
+  设置 GolfBall.X = Canvas1.Width / 2
+  设置 GolfBall.Y = Canvas1.Height - 100
+  设置 Hole.X = Canvas1.Width / 2 + 随机整数(到 -100, 到 100)
+  设置 Hole.Y = 100 + 随机整数(到 0, 到 100)
+  设置 BallOnTee = 真
+过程结束
+
+当 GolfBall.抛掷(x, y, speed, heading, xvel, yvel) 时
+  如果 BallOnTee = 真 则
+    设置 BallOnTee = 假
+    设置 GolfBall.Heading = heading
+    设置 GolfBall.Speed = speed * 1.5
+    设置 StrokeCount = StrokeCount + 1
+    设置 Score = Score + 1
+    设置 LabelStroke.Text = "本洞: " + StrokeCount
+    设置 LabelScore.Text = "总杆数: " + Score
+    调用 Clock1.启动()
+  如果结束
+
+当 Clock1.定时 时
+  如果 BallOnTee = 真 则
+    调用 在球座上移动球()
+    返回
+  如果结束
+  
+  如果 GolfBall.Speed > 0 则
+    设置 GolfBall.Speed = GolfBall.Speed * 0.95
+  否则
+    设置 GolfBall.Speed = 0
+    设置 BallOnTee = 真
+    调用 Clock1.停止()
+  如果结束
+
+当 GolfBall.碰撞(other) 时
+  如果 other = Hole 则
+    调用 Notifier1.显示消息框("太棒了！本洞 " + StrokeCount + " 杆！")
+    调用 重置本洞()
+  如果结束
+
+当 GolfBall.到达边缘(边缘) 时
+  如果 边缘 = "left" 或 边缘 = "right" 则
+    设置 GolfBall.Heading = 180 - GolfBall.Heading
+  否则
+    设置 GolfBall.Heading = 360 - GolfBall.Heading
+  如果结束
+  设置 GolfBall.Speed = GolfBall.Speed * 0.9
+
+当 LeftSprite.触摸开始(x, y) 时
+  设置 MoveLeft = 真
+
+当 LeftSprite.触摸结束(x, y) 时
+  设置 MoveLeft = 假
+
+当 RightSprite.触摸开始(x, y) 时
+  设置 MoveRight = 真
+
+当 RightSprite.触摸结束(x, y) 时
+  设置 MoveRight = 假
+```
+
+---
+
+## 六、图片资源
+
+### 6.1 下载链接
+
+- Tee图形：`/explore/sites/all/files/tutorials/miniGolf/tee_graphic.png`
+- 左箭头：`/explore/sites/all/files/tutorials/miniGolf/left_arrow.jpg`
+- 右箭头：`/explore/sites/all/files/tutorials/miniGolf/right_arrow.jpg`
+
+### 6.2 备用资源
+
+如果没有图片，可以用纯色矩形代替：
+- Tee：绿色矩形
+- 方向按钮：黑色箭头形状
+
+---
+
+## 七、扩展功能
+
+### 7.1 添加障碍物
+
+```
+当 Screen1.初始化 时
+  添加障碍物()
+
+过程 添加障碍物()
+  // 添加一个矩形障碍物
+  设置 全局变量 障碍物 = 创建 ImageSprite(
+    图片: "",
+    X: Canvas1.Width / 2 - 30,
+    Y: Canvas1.Height / 2,
+    Width: 60,
+    Height: 20
+  )
+过程结束
+
+当 GolfBall.碰撞(other) 时
+  如果 other = 障碍物 则
+    // 反弹处理
+    设置 GolfBall.Heading = 360 - GolfBall.Heading
+  如果结束
+```
+
+### 7.2 添加多个球洞
+
+```
+全局变量 当前洞数 = 1
+全局变量 总洞数 = 9
+
+当 Button_下一洞.点击 时
+  如果 当前洞数 < 总洞数 则
+    设置 当前洞数 = 当前洞数 + 1
+    调用 重置本洞()
+  否则
+    调用 Notifier1.显示消息框("游戏结束！总杆数: " + Score)
+  如果结束
+```
+
+### 7.3 添加音效
+
+```
+当 GolfBall.抛掷(x, y, speed, heading, xvel, yvel) 时
+  调用 Player1.播放()
+
+当 GolfBall.碰撞(other) 时
+  调用 Player1.播放()
+
+当 GolfBall.碰撞(other) 时
+  如果 other = Hole 则
+    调用 Sound1.播放()
+  如果结束
+```
+
+---
+
+## 八、常见问题
+
+### Q1: 球卡在边缘不动？
+
+**解决**：添加边界检测，确保球不会超出Canvas
+
+### Q2: 碰撞检测不准确？
+
+**原因**：球的速度太快，可能跳过碰撞
+**解决**：降低TimerInterval，增加碰撞检测频率
+
+### Q3: 球无法反弹？
+
+**检查**：EdgeReached事件是否正确设置Heading
+
+---
+
+**教程作者**：ai2claw 🐝
+**来源**：MIT App Inventor 官方教程
+**创建时间**：2026-04-01
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [Mini Golf: Fling, TouchUp, TouchDown Gestures](https://appinventor.mit.edu/explore/ai2/minigolf) - MIT App Inventor Official Tutorial
+- [App Inventor ai2.appinventor.mit.edu](https://ai2.appinventor.mit.edu) - MIT App Inventor
+
+### 版权声明
+本文档基于 MIT App Inventor 官方教程整理，版权归原作者所有：
+- MIT App Inventor 官方教程采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

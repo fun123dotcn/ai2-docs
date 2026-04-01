@@ -1,0 +1,370 @@
+---
+title: App Inventor 2 Block Finder - Tampermonkey油猴脚本完全指南
+description: 步骤1：安装浏览器扩展
+---
+
+
+# App Inventor 2 Block Finder - Tampermonkey油猴脚本完全指南
+
+---
+
+## 一、Block Finder是什么？
+
+### 1.1 功能概述
+
+```
+Block Finder是一个Tampermonkey油猴脚本
+帮助用户在App Inventor中快速搜索和定位积木块
+
+核心功能：
+- 🔍 全局搜索所有积木块
+- 📍 一键跳转到目标积木块
+- 📋 显示积木块使用统计
+- 🔎 支持模糊搜索
+```
+
+### 1.2 解决的问题
+
+```
+痛点：
+- 大型项目有几百个积木块
+- 手动查找费时费力
+- 难以快速定位特定功能的积木块
+
+解决方案：
+- 搜索框输入关键词
+- 自动列出所有匹配的积木块
+- 点击即可跳转定位
+```
+
+---
+
+## 二、安装配置
+
+### 2.1 安装Tampermonkey
+
+```
+步骤1：安装浏览器扩展
+
+Chrome：
+- 访问 Chrome 网上应用店
+- 搜索 "Tampermonkey"
+- 点击"添加至Chrome"
+
+Firefox：
+- 访问附加组件商店
+- 搜索 "Tampermonkey"  
+- 点击"添加到Firefox"
+
+Edge：
+- 访问Edge加载项
+- 搜索 "Tampermonkey"
+- 点击"获取"
+```
+
+### 2.2 安装Block Finder脚本
+
+```
+步骤2：安装Block Finder脚本
+
+方法1：Greasy Fork（推荐）
+1. 访问：https://greasyfork.org/scripts/477482
+2. 点击"安装此脚本"
+3. 确认安装
+
+方法2：GitHub
+1. 访问项目主页
+2. 点击Raw查看代码
+3. Tampermonkey会自动弹出安装提示
+```
+
+### 2.3 验证安装
+
+```
+验证步骤：
+1. 打开任意App Inventor项目
+2. 进入Blocks编辑器
+3. 查看右上角是否有搜索图标
+4. 如果有✅ 安装成功
+```
+
+---
+
+## 三、使用方法
+
+### 3.1 基础搜索
+
+```
+操作步骤：
+1. 点击右上角搜索图标 🔍
+2. 在搜索框输入关键词
+3. 自动显示匹配结果
+4. 点击结果跳转定位
+```
+
+### 3.2 搜索技巧
+
+```
+精准搜索：
+- 输入组件名：Label1
+- 输入积木类型：if、for、while
+- 输入变量名：global_score
+
+模糊搜索：
+- 输入部分单词：lbl → Label1, Label2
+- 输入拼音：biaoqian → Label（标签）
+- 输入缩写：txt → TextBox
+
+高级搜索：
+- type:controls_if → 只搜索if积木
+- var:score → 只搜索score变量
+- event → 只搜索事件处理器
+```
+
+### 3.3 功能面板
+
+```
+Block Finder功能面板：
+
+┌─────────────────────────────────┐
+│ 🔍 搜索框                        │
+├─────────────────────────────────┤
+│ 📊 统计信息                       │
+│  总积木数：256                   │
+│  变量：12  过程：8  事件：5       │
+├─────────────────────────────────┤
+│ 📋 最近使用                       │
+│  • Label1.Text                   │
+│  • global_score                  │
+│  • Button1.Click                 │
+├─────────────────────────────────┤
+│ ⚙️ 设置                          │
+│  [ ] 自动搜索                    │
+│  [x] 显示统计                    │
+└─────────────────────────────────┘
+```
+
+---
+
+## 四、高级技巧
+
+### 4.1 快速定位变量引用
+
+```
+场景：想找所有使用 global_score 的地方
+
+方法：
+1. 搜索框输入 "global_score"
+2. 显示所有引用位置
+3. 点击可快速跳转
+```
+
+### 4.2 批量重命名
+
+```
+场景：项目重构，需要重命名变量
+
+方法：
+1. 先用Block Finder找到所有引用
+2. 确认要替换的变量
+3. 逐个替换
+
+注意：App Inventor不直接支持重命名
+需要手动替换所有引用
+```
+
+### 4.3 项目分析
+
+```
+Block Finder统计功能：
+
+📊 项目统计：
+- 总Screen数：5
+- 总积木块数：1024
+- 变量数：45
+- 过程数：23
+- 事件处理器：15
+
+🔍 代码分布：
+- Screen1：356块（35%）
+- Screen2：289块（28%）
+- Screen3：198块（19%）
+- Screen4：112块（11%）
+- Screen5：69块（7%）
+```
+
+---
+
+## 五、自定义配置
+
+### 5.1 快捷键设置
+
+```javascript
+// 在Tampermonkey中编辑脚本
+// 自定义快捷键
+
+// 默认快捷键：
+// Ctrl+Shift+F → 打开搜索
+// Escape → 关闭搜索
+// Enter → 跳转到第一个结果
+```
+
+### 5.2 主题颜色
+
+```javascript
+// 自定义主题
+const CONFIG = {
+  theme: 'dark',  // dark / light / auto
+  accentColor: '#00aa00',  // 强调色
+  fontSize: 14,  // 字体大小
+  maxResults: 50  // 最大显示结果数
+};
+```
+
+---
+
+## 六、类似工具推荐
+
+### 6.1 App Inventor插件
+
+| 工具 | 功能 | 来源 |
+|------|------|------|
+| **Block Finder** | 全局搜索积木 | 社区脚本 |
+| **Project Analyzer** | 项目统计分析 | 社区扩展 |
+| **Block Organizer** | 积木整理排序 | 社区脚本 |
+
+### 6.2 浏览器扩展
+
+| 扩展 | 功能 | 浏览器 |
+|------|------|--------|
+| **App Inventor Sleuth** | 代码追踪 | Chrome |
+| **AI2 Helper** | 辅助工具集 | 多浏览器 |
+
+---
+
+## 七、故障排除
+
+### 7.1 脚本不工作
+
+```
+检查清单：
+□ Tampermonkey是否安装？
+□ 脚本是否启用？（Tampermonkey图标是灰色还是彩色？）
+□ 页面是否刷新？
+□ 控制台是否有错误？
+
+解决方法：
+1. 刷新页面
+2. 重新启用脚本
+3. 重新安装脚本
+4. 检查浏览器控制台
+```
+
+### 7.2 搜索不到结果
+
+```
+可能原因：
+- 积木块名称拼写错误
+- 搜索词太模糊
+- 当前Screen不对
+
+解决方法：
+1. 检查拼写
+2. 尝试更精准的搜索词
+3. 切换到正确的Screen
+```
+
+---
+
+## 八、替代方案
+
+### 8.1 手动搜索（无脚本）
+
+```
+在没有Block Finder的情况下：
+
+1. 使用Blocks编辑器的内置搜索
+   - 右上角有搜索图标
+   - 功能有限但可用
+
+2. 按类型筛选
+   - 控制块、逻辑块、数学块等
+   - 左侧面板分类
+
+3. 按组件筛选
+   - 左侧选择组件
+   - 显示该组件的所有积木块
+```
+
+### 8.2 导出项目分析
+
+```
+方法：导出.aia后分析
+
+1. 下载.aia文件
+2. 解压（本质是ZIP）
+3. 查看.bky文件
+4. 统计积木块数量
+
+# Linux/Mac统计命令
+grep -o 'type="' Screen1.bky | wc -l
+```
+
+---
+
+## 九、总结
+
+### 9.1 核心价值
+
+```
+Block Finder价值：
+- ⏱️ 节省查找时间（从5分钟→5秒）
+- 📊 项目统计分析
+- 🔍 全局搜索能力
+- 🎯 快速定位跳转
+```
+
+### 9.2 安装建议
+
+```
+推荐安装人群：
+- ✅ 项目积木块超过100个
+- ✅ 经常需要查找特定功能
+- ✅ 需要项目统计分析
+- ✅ 追求开发效率
+
+可选人群：
+- ⚪ 项目较小，积木块少
+- ⚪ 偶尔使用App Inventor
+```
+
+### 9.3 获取链接
+
+```
+Block Finder脚本：
+https://greasyfork.org/scripts/477482
+
+Tampermonkey：
+https://www.tampermonkey.net/
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

@@ -1,0 +1,210 @@
+---
+title: App Inventor 2 高德/百度地图教程
+description: "覆盖：地图显示、定位、marker标注、路线规划、电子围栏"
+---
+
+
+# App Inventor 2 高德/百度地图教程
+
+> 覆盖：地图显示、定位、marker标注、路线规划、电子围栏
+
+---
+
+## 一、地图方案对比
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| **高德地图** | 国内精准、免费额度大 | 需要Key |
+| **百度地图** | 国内精准 | 需要Key |
+| **OSMDroid** | 开源免费 | 功能较少 |
+| **Google Maps** | 全球支持 | 国内受限 |
+
+**推荐**：高德地图（国内首选）
+
+---
+
+## 二、高德地图Key申请
+
+### 2.1 申请流程
+
+1. 访问 https://console.amap.com 注册
+2. 创建应用，获取 Web服务Key
+3. 启用 Web端JS API 服务
+
+---
+
+## 三、WebView嵌入高德地图
+
+### 3.1 基础地图
+
+```
+// 加载高德地图HTML
+定义 加载地图(经度, 纬度)
+  初始化局部变量 地图HTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <script src="https://webapi.amap.com/maps?v=2.0&key=你的Key"></script>
+    </head>
+    <body>
+      <div id="map" style="width:100%;height:100%"></div>
+      <script>
+        var map = new AMap.Map('map', {
+          center: [${经度}, ${纬度}],
+          zoom: 15
+        });
+        function addMarker(lng, lat, title) {
+          var marker = new AMap.Marker({
+            position: [lng, lat],
+            title: title
+          });
+          marker.setMap(map);
+        }
+        function getCenter() {
+          return JSON.stringify(map.getCenter());
+        }
+      </script>
+    </body>
+    </html>
+  `
+  调用 Web查看器1.加载HTML(地图HTML)
+
+// 使用
+当 Screen1.初始化 时
+  调用 加载地图(116.397428, 39.90923)    // 北京
+```
+
+### 3.2 获取中心点坐标
+
+```
+当 按钮_获取中心.被点击 时
+  调用 Web查看器1.执行JavaScript("getCenter()")
+
+当 Web查看器1.JavaScript执行完成 时（结果）
+  初始化局部变量 坐标 = 调用 字典.JSON转字典(结果)
+  设置 标签_经度.文本 = 获取键的值(坐标, "lng", "")
+  设置 标签_纬度.文本 = 获取键的值(坐标, "lat", "")
+```
+
+---
+
+## 四、添加Marker标注
+
+### 4.1 添加标注点
+
+```
+定义 添加标注(经度, 纬度, 标题)
+  调用 Web查看器1.执行JavaScript(
+    "addMarker(" + 经度 + "," + 纬度 + ",'" + 标题 + "')"
+  )
+
+// 使用
+当 按钮_添加.被点击 时
+  调用 添加标注(116.397428, 39.90923, "天安门")
+```
+
+---
+
+## 五、路线规划
+
+### 5.1 驾车路线
+
+```
+定义 驾车路线(起点经, 起点纬, 终点经, 终点纬)
+  初始化局部变量 JS = `
+    AMap.plugin('AMap.Driving', function() {
+      var driving = new AMap.Driving({
+        map: map,
+        panel: 'panel'
+      });
+      driving.search(new AMap.LngLat(${起点经}, ${起点纬}), 
+                new AMap.LngLat(${终点经}, ${终点纬}));
+    });
+  `
+  调用 Web查看器1.执行JavaScript(JS)
+```
+
+---
+
+## 六、电子围栏
+
+### 6.1 判断点是否在区域内
+
+```
+定义 在围栏内(点经, 点纬, 围栏中心经, 围栏中心纬, 半径米)
+  // 简化为圆形围栏判断
+  初始化局部变量 距离 = 调用 计算距离(点经, 点纬, 围栏中心经, 围栏中心纬)
+  返回 距离 <= 半径米
+
+定义 计算距离(经1, 纬1, 经2, 纬2)
+  // Haversine公式
+  初始化局部变量 R = 6371000    // 地球半径（米）
+  初始化局部变量 dLat = (纬2 - 纬1) * π / 180
+  初始化局部变量 dLon = (经2 - 经1) * π / 180
+  初始化局部变量 a = 正弦(dLat/2) * 正弦(dLat/2) + 
+               正弦(纬1 * π / 180) * 正弦(纬2 * π / 180) * 
+               正弦(dLon/2) * 正弦(dLon/2)
+  初始化局部变量 c = 2 * 反正弦(平方根(a))
+  返回 R * c
+```
+
+---
+
+## 七、导航功能
+
+### 7.1 调起高德App导航
+
+```
+定义 发起导航(终点经, 终点纬)
+  初始化局部变量 坐标 = 合并字符串(终点经, ",", 终点纬)
+  // 调起高德App
+  调用 活动启动器1.启动活动()
+    动作 = "android.intent.action.VIEW"
+    数据URI = 合并字符串("amapuri://route/plan/?dlat=" + 终点纬 + "&dlon=" + 终点经 + "&dname=目的地&dev=0&t=1")
+```
+
+---
+
+## 八、常见问题
+
+### Q1：地图不显示？
+
+检查Key是否正确、是否启用相关服务
+
+### Q2：定位不准？
+
+使用GPS+网络混合定位
+
+### Q3：marker点击事件？
+
+通过WebViewString回传
+
+---
+
+## 参考资料
+
+- [高德地图JS API文档](https://lbs.amap.com/api/javascript-api/summary)
+- [高德Key申请](https://console.amap.com)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

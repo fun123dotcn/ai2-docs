@@ -1,0 +1,375 @@
+---
+title: App Inventor 2 BLE广播/nfConnect/语音唤醒/JDY-34教程
+description: NFC（Near Field Communication）近场通信 - 频率：13.56MHz - 距离：< 10cm - 类型：读卡器/卡/点对点
+---
+
+
+# App Inventor 2 BLE广播/nfConnect/语音唤醒/JDY-34教程
+
+---
+
+## 一、BLE广播
+
+### 1.1 BLE基础概念
+
+```
+BLE（Bluetooth Low Energy）蓝牙低功耗
+- 经典蓝牙（BR/EDR）：高速、大功耗（耳机、文件传输）
+- BLE（Smart）：低功耗、低速率（传感器、手环）
+
+关键参数：
+- UUID：服务唯一标识（类似端口号）
+- Characteristic：特征值（类似变量）
+- Descriptor：描述符（描述特征值）
+```
+
+### 1.2 BLE广播扩展
+
+```
+初始化全局变量 设备列表 = []
+初始化全局变量 连接的设备 = 无
+
+当 Screen1.初始化 时
+  调用 BLEExtension1.开始扫描(
+    服务UUID: ""
+  )
+
+当 BLEExtension1.设备发现(设备名, 地址, RSSI, 广播数据) 时
+  添加项目到列表(全局变量 设备列表, 设备名 + " | RSSI:" + RSSI)
+  设置 ListView1.Elements = 全局变量 设备列表
+  设置 全局变量 设备地址 = 地址
+
+当 Button_连接.被点击 时
+  调用 BLEExtension1.连接(地址: 全局变量 设备地址)
+
+当 BLEExtension1.连接成功() 时
+  调用 Notifier1.显示消息("BLE连接成功！")
+  // 发现服务
+  调用 BLEExtension1.发现服务()
+
+当 BLEExtension1.服务发现(服务UUID列表) 时
+  // 读取特征值
+  调用 BLEExtension1.读取特征值(
+    服务UUID: "0000FFE0-0000-1000-8000-00805F9B34FB",
+    特征UUID: "0000FFE1-0000-1000-8000-00805F9B34FB"
+  )
+
+当 BLEExtension1.数据接收(数据) 时
+  设置 Label_Data.文本 = "收到: " + 数据
+```
+
+### 1.3 nfConnect（近场连接）
+
+```
+// nfConnect扩展用于快速发现和连接附近设备
+当 Screen1.初始化 时
+  调用 nfConnect1.初始化()
+
+当 Button_快速连接.被点击 时
+  调用 nfConnect1.扫描附近设备()
+
+当 nfConnect1.设备扫描完成(设备列表) 时
+  如果 获取列表长度(设备列表) > 0 则
+    // 自动连接第一个设备
+    调用 nfConnect1.连接(获取列表项目(设备列表, 1))
+  否则
+    调用 Notifier1.显示消息("未发现附近设备")
+  如果结束
+
+当 nfConnect1.连接状态改变(状态) 时
+  如果 状态 = "connected" 则
+    设置 Label_Status.文本 = "✅ 已连接"
+  否则
+    设置 Label_Status.文本 = "❌ 断开连接"
+  如果结束
+```
+
+---
+
+## 二、NFC门禁卡拷贝
+
+### 2.1 NFC基础
+
+```
+NFC（Near Field Communication）近场通信
+- 频率：13.56MHz
+- 距离：< 10cm
+- 类型：读卡器/卡/点对点
+
+常见NFC标签类型：
+- NFC Type 1: Topaz (97字节)
+- NFC Type 2: MIFARE Ultralight (48字节)
+- NFC Type 3: Felica (2KB)
+- NFC Type 4: DESFire/MIFARE Classic (4KB)
+```
+
+### 2.2 读取NFC卡
+
+```
+当 Screen1.初始化 时
+  调用 NFCExtension1.启用NFC()
+
+当 Button_读取.被点击 时
+  调用 Notifier1.显示消息("请将NFC卡靠近手机背面")
+  调用 NFCExtension1.开始读取()
+
+当 NFCExtension1.读取成功(UID, 数据, 类型) 时
+  设置 Label_UID.文本 = "卡UID: " + UID
+  设置 Label_Type.文本 = "类型: " + 类型
+  设置 全局变量 卡数据 = 数据
+  
+  // 保存卡片信息
+  调用 TinyDB1.存储值(标签: "card_" + UID, 值为标签: JSON.字典转文本({
+    "uid": UID,
+    "type": 类型,
+    "data": 数据,
+    "time": 时钟1.格式化时间("yyyy-MM-dd HH:mm:ss")
+  }))
+  
+  调用 Notifier1.显示消息("✅ 卡片读取成功！")
+
+当 NFCExtension1.读取失败(原因) 时
+  调用 Notifier1.显示消息("读取失败: " + 原因)
+```
+
+### 2.3 模拟NFC卡（需HCE）
+
+```
+// HCE（Host Card Emulation）主机卡模拟
+// 允许应用模拟NFC卡
+
+当 Button_模拟.被点击 时
+  如果 全局变量 卡数据 ≠ 空 则
+    调用 NFCExtension1.开始模拟(
+      UID: 全局变量 卡片UID,
+      类型: 全局变量 卡片类型
+    )
+    调用 Notifier1.显示消息("正在模拟卡片，请靠近读卡器")
+  否则
+    调用 Notifier1.显示消息("请先读取一张卡片")
+  如果结束
+
+当 NFCExtension1.模拟状态改变(状态) 时
+  如果 状态 = "active" 则
+    设置 Label_Simulate.文本 = "🔄 模拟中..."
+  否则
+    设置 Label_Simulate.文本 = "⏹️ 已停止"
+  如果结束
+```
+
+### 2.4 门禁卡拷贝注意事项
+
+```
+⚠️ 重要提醒：
+
+1. 加密卡无法直接拷贝
+   - MIFARE Classic 1K/4K 有加密
+   - 需要破解或复制后门卡
+
+2. UID卡可自由复制
+   - 部分卡支持UID修改
+   - 使用UID卡即可通过门禁
+
+3. 法律责任
+   - 仅复制自己的门禁卡
+   - 不要用于非法目的
+
+4. 手机NFC限制
+   - 部分手机不支持卡模拟
+   - 需要Root或特定ROM
+```
+
+---
+
+## 三、语音唤醒扩展
+
+### 3.1 离线语音唤醒
+
+```
+// 使用Snowboy或其他离线唤醒引擎
+初始化全局变量 唤醒词 = "你好小魔"
+
+当 Screen1.初始化 时
+  调用 VoiceWakeup1.初始化(唤醒词: 全局变量 唤醒词)
+  调用 VoiceWakeup1.开始监听()
+  设置 Label_Wakeup.文本 = "🔴 等待唤醒..."
+
+当 VoiceWakeup1.唤醒成功(置信度) 时
+  设置 Label_Wakeup.文本 = "🟢 已唤醒！置信度: " + 置信度
+  // 播放提示音
+  调用 Player1.Start()
+  // 开始语音识别
+  调用 SpeechRecognizer1.GetText()
+
+当 VoiceWakeup1.唤醒失败() 时
+  设置 Label_Wakeup.文本 = "🔴 等待唤醒..."
+  // 重新开始监听
+  调用 VoiceWakeup1.开始监听()
+
+当 SpeechRecognizer1.AfterGettingText(识别文本, 是否结束) 时
+  调用 处理语音命令(识别文本)
+  // 继续监听
+  调用 VoiceWakeup1.开始监听()
+
+过程 处理语音命令(命令)
+  如果 文本包含(命令, "开灯") 则
+    调用 TextToSpeech1.朗读("好的，已开灯")
+  否则 如果 文本包含(命令, "关灯") 则
+    调用 TextToSpeech1.朗读("好的，已关灯")
+  否则 如果 文本包含(命令, "时间") 则
+    调用 TextToSpeech1.朗读("现在是" + 时钟1.格式化时间("HH点mm分"))
+  否则
+    调用 TextToSpeech1.朗读("抱歉，我没有理解您的指令")
+  如果结束
+过程结束
+```
+
+### 3.2 在线语音唤醒（百度）
+
+```
+// 百度语音唤醒API
+初始化全局变量 百度_AppID = "your_appid"
+初始化全局变量 百度_API_Key = "your_apikey"
+初始化全局变量 百度_Secret_Key = "your_secretkey"
+
+过程 初始化百度唤醒
+  // 获取Access Token
+  调用 Web1.发送文本请求(
+    网址: "https://aip.baidubce.com/oauth/2.0/token?" +
+          "grant_type=client_credentials&client_id=" + 全局变量 百度_API_Key +
+          "&client_secret=" + 全局变量 百度_Secret_Key
+  )
+
+当 Web1.收到文本响应(响应) 时
+  设置 全局变量 Token = 获取键的值(JSON.文本转字典(响应), "access_token", "")
+  
+  // 开始唤醒
+  调用 BaiduVoiceWakeup1.开始唤醒(
+    AppID: 全局变量 百度_AppID,
+    AccessToken: 全局变量 Token,
+    关键词: ["小魔", "小度", "Siri"]
+  )
+```
+
+---
+
+## 四、JDY-34双模蓝牙模块
+
+### 4.1 模块简介
+
+```
+JDY-34 特性：
+- 双模：经典蓝牙SPP + BLE 5.0
+- 尺寸：18mm x 35mm
+- 电压：3.3V
+- 波特率：9600/115200等
+- AT指令配置
+
+应用场景：
+- 蓝牙串口透传
+- BLE传感器数据采集
+- 物联网数据通信
+```
+
+### 4.2 AT指令配置
+
+```
+AT指令格式：
+- 发送：AT+XXX\r\n
+- 响应：+XXX:OK 或 +XXX:ERROR
+
+常用指令：
+AT+BAUD4    → 设置波特率9600
+AT+BAUD5    → 设置波特率115200
+AT+NAMEJDY34 → 设置蓝牙名称
+AT+PIN1234  → 设置配对密码
+AT+ROLE0    → 从机模式
+AT+ROLE1    → 主机模式
+AT+UUID1234 → 设置服务UUID
+AT+FEAT0    → SPP模式
+AT+FEAT1    → BLE模式
+AT+FEAT2    → 双模模式
+```
+
+### 4.3 经典蓝牙SPP模式连接
+
+```
+// JDY-34默认进入SPP模式
+当 Screen1.初始化 时
+  调用 BluetoothClient1.开启蓝牙()
+
+当 Button_扫描.被点击 时
+  调用 BluetoothClient1.获取已配对设备列表()
+  设置 ListPicker1.Elements = BluetoothClient1.已配对设备
+
+当 ListPicker1.AfterPicking() 时
+  设置 全局变量 设备名称 = ListPicker1.Selection
+  调用 BluetoothClient1.连接(设备名称)
+
+当 BluetoothClient1.连接成功() 时
+  设置 Label_Status.文本 = "✅ 已连接到" + 全局变量 设备名称
+  调用 时钟1.开启定时器(间隔: 100)
+
+当 时钟1.计时 时
+  如果 BluetoothClient1.可用字节数 > 0 则
+    设置 全局变量 数据 = BluetoothClient1.读取字节()
+    设置 Label_Receive.文本 = "收到: " + 全局变量 数据
+  如果结束
+
+当 Button_发送.被点击 时
+  调用 BluetoothClient1.发送文本(TextBox1.文本)
+```
+
+### 4.4 BLE模式连接
+
+```
+// 设置JDY-34为BLE模式
+// AT+FEAT1 然后重启
+
+初始化全局变量 BLE_服务UUID = "0000FFE0-0000-1000-8000-00805F9B34FB"
+初始化全局变量 BLE_特征UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"
+
+当 Screen1.初始化 时
+  调用 BLEExtension1.开始扫描()
+
+当 BLEExtension1.设备发现(名称, 地址, RSSI, 广播) 时
+  如果 文本包含(名称, "JDY-34") 或 文本包含(名称, "JDY34") 则
+    调用 BLEExtension1.连接(地址)
+  如果结束
+
+当 BLEExtension1.连接成功() 时
+  // 读取数据
+  调用 BLEExtension1.读取特征值(
+    服务UUID: 全局变量 BLE_服务UUID,
+    特征UUID: 全局变量 BLE_特征UUID
+  )
+  // 订阅通知
+  调用 BLEExtension1.订阅通知(
+    服务UUID: 全局变量 BLE_服务UUID,
+    特征UUID: 全局变量 BLE_特征UUID
+  )
+
+当 BLEExtension1.数据接收(数据) 时
+  设置 Label_Data.文本 = "BLE收到: " + 数据
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

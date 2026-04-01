@@ -1,0 +1,234 @@
+---
+title: App Inventor 2 图片处理教程
+description: "覆盖：图片缩放显示、OCR文字识别、百度AI图像识别、图像矫正。"
+---
+
+
+# App Inventor 2 图片处理教程
+
+> 覆盖：图片缩放显示、OCR文字识别、百度AI图像识别、图像矫正。
+
+---
+
+## 一、图片缩放显示
+
+### 1.1 图片组件属性
+
+| 属性 | 说明 | 推荐设置 |
+|------|------|---------|
+| 宽度 | 图片显示宽度 | 百分比或充满 |
+| 高度 | 图片显示高度 | 自动（保持比例） |
+| 缩放图片以适应大小（ScalePictureToFit） | 是否缩放适配 | ✅ 勾选 |
+
+### 1.2 自适应缩放代码
+
+```
+// 图片宽度充满屏幕，高度自动保持比例
+设置 图片1.宽度百分比 = 100
+设置 图片1.高度 = -1    // -1 = 自动
+
+// 或者固定宽高比（如4:3）
+设置 图片1.宽度百分比 = 80
+设置 图片1.高度 = 四舍五入(Screen1.宽度 * 0.8 * 3 / 4)
+```
+
+### 1.3 图片缩略图（用画布实现）
+
+```
+// 将大图缩小为缩略图
+定义 生成缩略图(图片路径, 目标宽, 目标高)
+  设置 画布1.宽度 = 目标宽
+  设置 画布1.高度 = 目标高
+  设置 画布1.背景图片 = 图片路径
+  // 保存为新图片
+  调用 画布1.保存为文件("thumbnail.png")
+```
+
+---
+
+## 二、OCR文字识别
+
+### 2.1 方案对比
+
+| 方案 | 免费额度 | 中文支持 | 难度 |
+|------|---------|---------|------|
+| **OCRSpace扩展** | 每月25000次 | ✅ | ⭐ |
+| **百度OCR API** | 每日1000次 | ✅ 优秀 | ⭐⭐ |
+| **本地OCR** | 无限制 | 一般 | ⭐⭐⭐⭐ |
+
+**推荐**：OCRSpace（免费额度大，无需注册）
+
+### 2.2 OCRSpace扩展用法
+
+```
+// 拍照后识别文字
+当 摄像头1.拍照完成 时（图片路径）
+  设置 图片1.图片 = 图片路径
+  设置 标签_状态.文本 = "识别中..."
+  
+  // 调用OCRSpace识别
+  调用 OCRSpace1.识别图片
+    图片路径 = 图片路径
+    语言 = "chs"    // chs=简体中文, eng=英文
+
+当 OCRSpace1.识别完成 时（识别结果）
+  设置 标签_状态.文本 = ""
+  设置 文本框_结果.文本 = 识别结果
+
+当 OCRSpace1.识别失败 时（错误信息）
+  调用 对话框1.显示消息对话框("识别失败：" + 错误信息, "错误", "确定")
+```
+
+### 2.3 百度OCR API（更准确）
+
+```
+初始化全局变量 百度API_KEY = "你的API_KEY"
+初始化全局变量 百度SECRET_KEY = "你的SECRET_KEY"
+初始化全局变量 百度ACCESS_TOKEN = ""
+
+// 第一步：获取Access Token
+定义 获取百度Token()
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/oauth/2.0/token",
+    "?grant_type=client_credentials",
+    "&client_id=", 全局变量 百度API_KEY,
+    "&client_secret=", 全局变量 百度SECRET_KEY
+  )
+  调用 Web客户端1.发送POST文本("")
+
+// 第二步：图片转Base64后识别
+定义 百度OCR识别(图片路径)
+  // 读取图片为Base64
+  调用 文件工具1.读取文件为Base64(图片路径)
+
+当 文件工具1.读取完成 时（Base64文本）
+  // 调用百度OCR
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic",
+    "?access_token=", 全局变量 百度ACCESS_TOKEN
+  )
+  调用 Web客户端1.构建请求数据(["image"], [Base64文本])
+  调用 Web客户端1.发送POST请求
+
+// 解析百度OCR结果
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    初始化局部变量 根字典 = 调用 字典.JSON转字典(响应内容)
+    初始化局部变量 词组列表 = 获取键的值(根字典, "words_result", [])
+    
+    初始化局部变量 全文 = ""
+    对于 每个 词组 在 词组列表 中
+      设置 全文 = 合并字符串(全文, 获取键的值(词组, "words", ""), "\n")
+    
+    设置 文本框_结果.文本 = 全文
+```
+
+---
+
+## 三、百度AI图像识别
+
+### 3.1 物品识别
+
+```
+// 识别图片中的物品
+定义 识别物品(图片Base64)
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general",
+    "?access_token=", 全局变量 百度ACCESS_TOKEN
+  )
+  调用 Web客户端1.构建请求数据(["image"], [图片Base64])
+  调用 Web客户端1.发送POST请求
+
+// 解析识别结果
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 根字典 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 结果列表 = 获取键的值(根字典, "result", [])
+  
+  初始化局部变量 显示文本 = "识别结果：\n"
+  对于 每个 项 在 结果列表 中
+    初始化局部变量 名称 = 获取键的值(项, "keyword", "")
+    初始化局部变量 置信度 = 获取键的值(项, "score", 0)
+    设置 显示文本 = 合并字符串(
+      显示文本, 名称, "（",
+      四舍五入到小数点后1位(置信度 * 100), "%）\n"
+    )
+  
+  设置 标签_结果.文本 = 显示文本
+```
+
+---
+
+## 四、图像矫正（文档扫描）
+
+### 4.1 原理
+
+拍摄倾斜的文档时，需要透视矫正（四点变换）。App Inventor 2 原生不支持，需要扩展或云API。
+
+### 4.2 百度文档矫正API
+
+```
+// 调用百度文档矫正API
+定义 矫正文档(图片Base64)
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/rest/2.0/image-process/v1/doc_crop_enhance",
+    "?access_token=", 全局变量 百度ACCESS_TOKEN
+  )
+  调用 Web客户端1.构建请求数据(["image"], [图片Base64])
+  调用 Web客户端1.发送POST请求
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 根字典 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 矫正图片Base64 = 获取键的值(根字典, "image", "")
+  
+  如果 矫正图片Base64 ≠ "" 则
+    // Base64转图片文件
+    调用 文件工具1.Base64转文件(矫正图片Base64, "/corrected.jpg")
+    设置 图片1.图片 = "/corrected.jpg"
+```
+
+---
+
+## 五、常见问题
+
+### Q1：图片显示变形？
+
+- 设置 `ScalePictureToFit = 真`
+- 高度设为 `-1`（自动），不要固定高度
+
+### Q2：OCR识别中文乱码？
+
+- OCRSpace：语言参数设为 `"chs"`（简体中文）
+- 百度OCR：默认支持中文，无需额外设置
+
+### Q3：百度API返回110错误？
+
+Access Token过期，重新调用 `获取百度Token()` 刷新。
+
+---
+
+## 参考资料
+
+- [OCR图片文字识别全方案](https://www.fun123.cn/reference/pro/ocr.html)
+- [百度AI开放平台](https://ai.baidu.com/)
+- [OCRSpace官网](https://ocr.space/OCRAPI)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

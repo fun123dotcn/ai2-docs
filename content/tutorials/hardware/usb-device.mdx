@@ -1,0 +1,574 @@
+---
+title: App Inventor 2 读取USB设备完整教程
+description: "本教程探讨App Inventor读取USB设备的各种方案，包括USB OTG串口通信、蓝牙替代、HID设备输入处理等。"
+---
+
+
+# App Inventor 2 读取USB设备完整教程
+
+> 本教程探讨App Inventor读取USB设备的各种方案，包括USB OTG串口通信、蓝牙替代、HID设备输入处理等。
+
+---
+
+## 一、技术背景
+
+### 1.1 App Inventor的USB能力
+
+| 能力 | 支持情况 | 说明 |
+|------|---------|------|
+| USB Host API | ❌ 不支持 | 需要原生Android开发 |
+| USB HID | ❌ 不支持 | 键盘/鼠标输入 |
+| USB Serial | ⚠️ 需扩展 | 通过第三方扩展支持 |
+| USB OTG | ⚠️ 需硬件 | 需要OTG线和适配器 |
+
+### 1.2 Android USB架构
+
+```
+┌─────────────────────────────────────┐
+│           Android 应用层              │
+│         (App Inventor 应用)          │
+├─────────────────────────────────────┤
+│         Android Framework            │
+│   (USB Manager, USB Host API)        │
+├─────────────────────────────────────┤
+│           USB Driver                 │
+│  (CDC/ACM, HID, Mass Storage)       │
+├─────────────────────────────────────┤
+│         USB Controller              │
+│      (OTG Hardware)                │
+├─────────────────────────────────────┤
+│            USB Device               │
+│   (Serial, Keyboard, HID Device)    │
+└─────────────────────────────────────┘
+
+App Inventor 只能到达应用层，无法直接访问USB Host API
+```
+
+---
+
+## 二、方案一：USB OTG + 串口通信
+
+### 2.1 硬件准备
+
+| 设备 | 用途 | 购买链接 |
+|------|------|---------|
+| USB OTG转接线 | 手机连接USB设备 | 手机配件店 |
+| USB转TTL模块 | CH340/FT232 | 淘宝/京东 |
+| USB设备 | 串口设备 | - |
+
+### 2.2 接线方式
+
+**USB转TTL模块连接**：
+
+```
+┌─────────────┐         ┌─────────────────┐
+│  USB设备    │  USB    │  USB转TTL模块   │
+│             │────────→│                 │
+│             │         │  TX → RX        │
+│             │         │  RX → TX        │
+│             │         │  GND → GND     │
+└─────────────┘         └────────┬────────┘
+                                 │ TTL
+                                 ↓
+                          ┌─────────────┐
+                          │  手机OTG接口 │
+                          │  (USB OTG)  │
+                          └─────────────┘
+```
+
+### 2.3 需要的组件
+
+| 组件 | 说明 |
+|------|------|
+| Serial串口扩展 | 第三方扩展，支持串口通信 |
+| 时钟 | 定时读取数据 |
+| 文本框/标签 | 显示接收数据 |
+| 按钮 | 发送控制命令 |
+
+### 2.4 串口扩展配置
+
+```
+当 Screen1.初始化 时
+  // 配置串口参数
+  设置 Serial1.端口 = "/dev/ttyUSB0"
+  设置 Serial1.波特率 = 9600
+  设置 Serial1.数据位 = 8
+  设置 Serial1.停止位 = 1
+  设置 Serial1.校验位 = "无"
+
+当 Button_Connect.被点击 时
+  调用 Serial1.打开串口()
+
+当 Serial1.串口打开成功() 时
+  调用 Notifier1.显示消息("串口连接成功")
+  // 开启定时读取
+  调用 时钟1.开启定时器(间隔: 100)
+
+当 Serial1.串口打开失败(错误信息) 时
+  调用 Notifier1.显示消息("连接失败: " + 错误信息)
+```
+
+### 2.5 数据读取
+
+```
+当 时钟1.计时 时
+  // 读取串口缓冲区数据
+  调用 Serial1.读取数据()
+
+当 Serial1.数据接收(数据) 时
+  // 显示接收到的数据
+  设置 Label_Data.文本 = "收到: " + 数据
+  
+  // 处理按键值
+  调用 处理键盘数据(数据)
+
+过程 处理键盘数据(数据)
+  // USB键盘通过串口发送的可能是ASCII码或自定义格式
+  设置 全局变量 键值 = 文本转数字(数据)
+  
+  如果 全局变量 键值 > 0 则
+    设置 全局变量 键名 = 查询键码(全局变量 键值)
+    设置 Label_Key.文本 = "按键: " + 全局变量 键名
+  如果结束
+```
+
+### 2.6 数据发送
+
+```
+当 Button_Send.被点击 时
+  设置 全局变量 命令 = TextBox_Command.文本
+  调用 Serial1.发送文本(全局变量 命令 + "\r\n")
+
+当 Serial1.发送完成() 时
+  调用 Notifier1.显示消息("发送成功")
+```
+
+---
+
+## 三、方案二：蓝牙HID替代方案
+
+### 3.1 蓝牙HID优势
+
+| 对比项 | USB OTG | 蓝牙HID |
+|--------|---------|---------|
+| 连接距离 | 有线（&lt;1米） | 无线（10米+） |
+| 配置复杂度 | 需扩展 | 简单 |
+| 兼容性 | 部分手机不支持OTG | 几乎都支持 |
+| 实时性 | 高 | 中等 |
+
+### 3.2 蓝牙HID设备
+
+支持的蓝牙HID设备：
+- 蓝牙键盘
+- 蓝牙鼠标
+- 蓝牙游戏手柄
+- 蓝牙条码扫描器
+- 蓝牙数字键盘
+
+### 3.3 接收蓝牙手柄输入
+
+```
+当 Screen1.初始化 时
+  设置 GameClient1.启用 = 真
+
+当 GameClient1.摇杆(摇杆编号, X轴值, Y轴值) 时
+  设置 Label_X.文本 = "X: " + X轴值
+  设置 Label_Y.文本 = "Y: " + Y轴值
+
+当 GameClient1.按钮(按钮编号, 是否按下) 时
+  如果 是否按下 = 真 则
+    调用 Notifier1.显示消息("按钮 " + 按钮编号 + " 按下")
+  如果结束
+
+当 GameClient1.方向键(方向) 时
+  设置 Label_Direction.文本 = "方向: " + 方向
+```
+
+---
+
+## 四、方案三：USB扫码枪
+
+### 4.1 扫码枪工作原理
+
+USB扫码枪本质上是HID输入设备，扫描时相当于快速输入一串字符（通常是数字+回车）。
+
+### 4.2 捕获扫码输入
+
+```
+初始化全局变量 扫码缓冲 = ""
+初始化全局变量 扫码完成标志 = 假
+初始化全局变量 超时计时器 = 0
+
+当 屏幕.按键按下(按键码) 时
+  // USB扫码枪发送的按键码
+  设置 全局变量 字符 = 键码转字符(按键码)
+  
+  如果 全局变量 字符 = "ENTER" 则
+    // 扫码完成
+    设置 全局变量 扫码完成标志 = 真
+    调用 处理扫码结果(全局变量 扫码缓冲)
+    设置 全局变量 扫码缓冲 = ""
+  否则
+    // 累加字符
+    设置 全局变量 扫码缓冲 = 全局变量 扫码缓冲 + 全局变量 字符
+    // 重置超时计时器
+    设置 全局变量 超时计时器 = 0
+  如果结束
+
+当 时钟1.计时 时
+  // 超时处理（防止扫码枪故障）
+  设置 全局变量 超时计时器 = 全局变量 超时计时器 + 1
+  如果 全局变量 超时计时器 > 50 且 全局变量 扫码缓冲 ≠ "" 则
+    // 超时，清空缓冲区
+    设置 全局变量 扫码缓冲 = ""
+    设置 全局变量 超时计时器 = 0
+  如果结束
+
+过程 处理扫码结果(条码内容)
+  设置 Label_ScanResult.文本 = "扫码结果: " + 条码内容
+  
+  // 根据条码类型处理
+  如果 文本取部分(条码内容, 1, 3) = "69" 则
+    // 可能是ISBN书号
+    调用 查询书籍信息(条码内容)
+  否则 如果 文本取部分(条码内容, 1, 2) = "45" 则
+    // EAN商品码
+    调用 查询商品信息(条码内容)
+  否则
+    // 其他类型条码
+    调用 Notifier1.显示消息("扫码成功: " + 条码内容)
+  如果结束
+```
+
+---
+
+## 五、方案四：USB控制设备（Arduino/单片机）
+
+### 5.1 系统架构
+
+```
+┌────────────────────────────────────────────┐
+│           Android 手机                      │
+│  ┌──────────────────────────────────────┐ │
+│  │         App Inventor 应用             │ │
+│  │  ┌─────────┐    ┌─────────────────┐  │ │
+│  │  │ 串口扩展 │ ←→ │   控制界面UI    │  │ │
+│  │  └────┬────┘    └─────────────────┘  │ │
+│  └───────┼─────────────────────────────────┘ │
+│          │ USB OTG                         │
+│          ↓                                  │
+│  ┌────────────────────────────────────────┐│
+│  │      USB转TTL模块 (CH340/FT232)        ││
+│  └───────────┬────────────────────────────┘│
+│              │ UART (TX/RX/GND)             │
+│              ↓                              │
+│  ┌────────────────────────────────────────┐│
+│  │       Arduino/ESP32/STM32              ││
+│  │  ┌─────────────┐  ┌──────────────┐    ││
+│  │  │ 串口接收    │  │  控制逻辑    │    ││
+│  │  └─────────────┘  └──────────────┘    ││
+│  │  ┌─────────────┐  ┌──────────────┐    ││
+│  │  │ 继电器/电机 │  │  传感器读取  │    ││
+│  │  └─────────────┘  └──────────────┘    ││
+│  └────────────────────────────────────────┘│
+└────────────────────────────────────────────┘
+```
+
+### 5.2 Arduino固件代码
+
+```cpp
+// Arduino 读取USB串口数据并控制设备
+#include <Servo.h>
+
+Servo myServo;
+int relayPin = 13;
+int ledPin = 12;
+int servoAngle = 0;
+
+void setup() {
+  Serial.begin(9600);
+  myServo.attach(9);
+  pinMode(relayPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(relayPin, LOW);
+  digitalWrite(ledPin, LOW);
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    
+    if (command.startsWith("LED:")) {
+      String state = command.substring(4);
+      digitalWrite(ledPin, state == "ON" ? HIGH : LOW);
+      Serial.println("LED:" + state);
+    }
+    else if (command.startsWith("RELAY:")) {
+      String state = command.substring(6);
+      digitalWrite(relayPin, state == "ON" ? HIGH : LOW);
+      Serial.println("RELAY:" + state);
+    }
+    else if (command.startsWith("SERVO:")) {
+      int angle = command.substring(6).toInt();
+      myServo.write(angle);
+      Serial.println("SERVO:" + String(angle));
+    }
+    else if (command == "STATUS") {
+      Serial.println("LED:" + String(digitalRead(ledPin)));
+      Serial.println("RELAY:" + String(digitalRead(relayPin)));
+      Serial.println("SERVO:" + String(servoAngle));
+    }
+  }
+  
+  // 读取传感器数据
+  int sensorValue = analogRead(A0);
+  Serial.println("SENSOR:" + String(sensorValue));
+  delay(100);
+}
+```
+
+### 5.3 App Inventor控制代码
+
+```
+初始化全局变量 连接状态 = 假
+
+当 Button_Connect.被点击 时
+  调用 Serial1.打开串口("/dev/ttyUSB0", 9600)
+
+当 Button_LED_ON.被点击 时
+  调用 Serial1.发送文本("LED:ON")
+
+当 Button_LED_OFF.被点击 时
+  调用 Serial1.发送文本("LED:OFF")
+
+当 Button_Relay_ON.被点击 时
+  调用 Serial1.发送文本("RELAY:ON")
+
+当 Button_Relay_OFF.被点击 时
+  调用 Serial1.发送文本("RELAY:OFF")
+
+当 Slider_Servo.位置改变 时
+  设置 全局变量 角度 = Slider_Servo.值
+  调用 Serial1.发送文本("SERVO:" + 全局变量 角度)
+
+当 Button_GetStatus.被点击 时
+  调用 Serial1.发送文本("STATUS")
+
+当 Serial1.数据接收(数据) 时
+  // 解析传感器数据
+  如果 文本包含(数据, "SENSOR:") 则
+    设置 全局变量 传感器值 = 文本取部分(数据, 8, -1)
+    设置 Label_Sensor.文本 = "传感器: " + 全局变量 传感器值
+  如果结束
+  
+  // 解析状态反馈
+  如果 文本包含(数据, "LED:") 则
+    设置 Label_LED.文本 = "LED状态: " + 文本取部分(数据, 4, -1)
+  如果结束
+  
+  如果 文本包含(数据, "SERVO:") 则
+    设置 Label_Servo.文本 = "舵机角度: " + 文本取部分(数据, 6, -1)
+  如果结束
+```
+
+---
+
+## 六、方案五：网络TCP/UDP方案
+
+### 6.1 系统架构
+
+当USB连接不可行时，可通过WiFi/网络实现：
+
+```
+┌──────────────┐        WiFi        ┌──────────────┐
+│   手机App    │ ←──────────────→ │   网络服务器  │
+│  (App Inventor)│               │  (Python/Node) │
+└──────────────┘                 └───────┬────────┘
+                                        │
+                                    USB/串口
+                                        ↓
+                                  ┌──────────────┐
+                                  │  USB设备     │
+                                  │  (继电器/   │
+                                  │   传感器)    │
+                                  └──────────────┘
+```
+
+### 6.2 Python服务器代码
+
+```python
+# server.py - 网络转串口服务器
+from socket import socket, AF_INET, SOCK_STREAM
+import serial
+import threading
+
+# 串口配置
+ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+
+# TCP服务器
+server = socket(AF_INET, SOCK_STREAM)
+server.bind(('0.0.0.0', 8888))
+server.listen(5)
+
+def handle_client(client, addr):
+    print(f"客户端连接: {addr}")
+    while True:
+        try:
+            data = client.recv(1024)
+            if not data:
+                break
+            # 转发到串口
+            ser.write(data)
+            # 读取串口响应
+            if ser.in_waiting:
+                response = ser.read(ser.in_waiting)
+                client.send(response)
+        except:
+            break
+    client.close()
+    print(f"客户端断开: {addr}")
+
+while True:
+    client, addr = server.accept()
+    threading.Thread(target=handle_client, args=(client, addr)).start()
+```
+
+### 6.3 App Inventor网络代码
+
+```
+当 Screen1.初始化 时
+  设置 Socket1.服务器地址 = "192.168.1.100"
+  设置 Socket1.端口 = 8888
+
+当 Button_Connect.被点击 时
+  调用 Socket1.连接()
+
+当 Socket1.连接成功() 时
+  设置 全局变量 连接状态 = 真
+  调用 Notifier1.显示消息("连接成功")
+
+当 Socket1.连接失败(错误) 时
+  设置 全局变量 连接状态 = 假
+  调用 Notifier1.显示消息("连接失败")
+
+当 Button_Send.被点击 时
+  如果 全局变量 连接状态 = 真 则
+    调用 Socket1.发送文本(TextBox_Command.文本)
+  否则
+    调用 Notifier1.显示消息("请先连接")
+  如果结束
+
+当 Socket1.数据到达(数据) 时
+  设置 Label_Response.文本 = "响应: " + 数据
+```
+
+---
+
+## 七、方案对比总结
+
+| 方案 | 难度 | 成本 | 可靠性 | 推荐度 |
+|------|------|------|--------|--------|
+| USB OTG + 串口 | ⭐⭐⭐ | 低 | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| 蓝牙HID替代 | ⭐⭐ | 中 | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 扫码枪输入 | ⭐⭐⭐ | 低 | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Arduino中转 | ⭐⭐⭐ | 中 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| 网络TCP转接 | ⭐⭐⭐ | 高 | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+
+---
+
+## 八、硬件采购建议
+
+### 8.1 USB OTG配件
+
+| 配件 | 推荐型号 | 价格 | 用途 |
+|------|---------|------|------|
+| OTG转接线 | 绿联/品胜 | ¥15-30 | 手机连接USB |
+| OTG Hub | 绿联USB-C Hub | ¥50-100 | 多USB口扩展 |
+
+### 8.2 USB转TTL模块
+
+| 模块 | 芯片 | 驱动 | 推荐度 |
+|------|------|------|--------|
+| CH340 | 南京沁恒 | 免驱(Win/Mac) | ⭐⭐⭐⭐⭐ |
+| FT232 | FTDI | 需安装驱动 | ⭐⭐⭐⭐ |
+| PL2303 | Prolific | 驱动不稳定 | ⭐⭐ |
+
+### 8.3 单片机推荐
+
+| 开发板 | 优点 | 串口 | 推荐度 |
+|--------|------|------|--------|
+| Arduino UNO | 生态好 | USB转TTL | ⭐⭐⭐⭐⭐ |
+| ESP32 | WiFi/蓝牙 | 原生USB | ⭐⭐⭐⭐⭐ |
+| STM32 | 性能强 | USB/TTL | ⭐⭐⭐ |
+
+---
+
+## 九、常见问题
+
+### 9.1 手机不支持OTG
+
+**检查方法**：
+- 设置 → 关于手机 → 查看是否有OTG支持
+- 下载"USB OTG Checker"应用检测
+
+**解决方案**：
+- 使用蓝牙HID设备代替
+- 使用网络TCP方案
+
+### 9.2 串口连接失败
+
+**可能原因**：
+- USB转TTL模块未识别
+- 波特率不匹配
+- TX/RX接反
+
+**解决步骤**：
+1. 确认手机支持USB Host
+2. 检查OTG线和转接模块
+3. 验证TX/RX接线正确
+4. 确认波特率设置一致
+
+### 9.3 数据乱码
+
+**原因**：波特率/数据位不匹配  
+**解决**：确保Arduino和App设置一致（9600, 8N1）
+
+---
+
+## 十、总结
+
+App Inventor读取USB设备的能力有限，推荐方案：
+
+| 设备类型 | 最佳方案 |
+|---------|---------|
+| USB键盘按键 | Arduino中转 + 串口 |
+| USB控制设备 | USB OTG + 串口 |
+| USB扫码枪 | 蓝牙扫码枪 |
+| USB游戏手柄 | 蓝牙手柄 |
+| USB传感器 | Arduino/ESP32中转 |
+
+**核心思路**：通过Arduino/单片机作为中间层，将USB设备转换为串口数据，App Inventor通过串口扩展读取。
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-30  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

@@ -1,0 +1,219 @@
+---
+title: App Inventor 2 百度AI接入教程
+description: "覆盖：语音识别、语音合成、人脸识别、图像识别、OCR"
+---
+
+
+# App Inventor 2 百度AI接入教程
+
+> 覆盖：语音识别、语音合成、人脸识别、图像识别、OCR
+
+---
+
+## 一、百度AI平台准备
+
+### 1.1 注册与创建应用
+
+1. 访问 https://ai.baidu.com 注册百度账号
+2. 创建应用，获取 API Key 和 Secret Key
+3. 在控制台开通需要的服务（语音、图像、人脸等）
+
+### 1.2 核心概念
+
+| 概念 | 说明 |
+|------|------|
+| API Key | 应用标识，公开发布 |
+| Secret Key | 密钥，需保密 |
+| Access Token | 调用凭证，30天有效 |
+
+---
+
+## 二、获取Access Token
+
+### 2.1 代码实现
+
+```
+初始化全局变量 百度TOKEN = ""
+
+当 Screen1.初始化 时
+  调用 获取百度Token()
+
+定义 获取百度Token()
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/oauth/2.0/token",
+    "?grant_type=client_credentials",
+    "&client_id=你的API_KEY",
+    "&client_secret=你的SECRET_KEY"
+  )
+  调用 Web客户端1.发送POST文本("")
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 在文本中查找(URL, "oauth") > 0 则
+    初始化局部变量 结果 = 调用 字典.JSON转字典(响应内容)
+    设置 全局变量 百度TOKEN = 获取键的值(结果, "access_token", "")
+```
+
+---
+
+## 三、语音识别
+
+### 3.1 录音识别
+
+```
+定义 语音识别()
+  // 先录音
+  调用 录音机1.开始()
+
+当 录音机1.录音完成后 时（音频路径）
+  // 读取为Base64
+  调用 文件工具1.读取文件为Base64(音频路径)
+
+当 文件工具1.读取完成 时（Base64文本）
+  // 调用百度语音识别API
+  设置 Web客户端1.URL = 合并字符串(
+    "https://vop.baidu.com/server_api",
+    "?access_token=", 全局变量 百度TOKEN
+  )
+  调用 Web客户端1.构建请求数据(
+    ["format", "rate", "channel", "cuid", "token", "content"],
+    ["wav", "16000", "1", "your_cuid", 全局变量 百度TOKEN, Base64文本]
+  )
+  调用 Web客户端1.发送POST请求()
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 结果 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 文本 = 获取键路径的值(结果, ["result", 0], "")
+  设置 标签_识别结果.文本 = 文本
+```
+
+---
+
+## 四、语音合成
+
+### 4.1 文字转语音
+
+```
+定义 语音合成(文本)
+  设置 Web客户端1.URL = 合并字符串(
+    "https://tsn.baidu.com/text2audio",
+    "?tok=", 全局变量 百度TOKEN,
+    "&tex=", 文本,
+    "&per=0",    # 0=度小美, 1=度小宇
+    "&spd=5",    # 语速 0-15
+    "&vol=5",     # 音量 0-15
+    "&pit=5",     # 音调 0-15
+    "&aue=3"     # 3=mp3
+  )
+  调用 Web客户端1.发送GET请求()
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  如果 响应码 = 200 则
+    // 直接播放音频URL
+    设置 播放器1.音源 = URL
+    调用 播放器1.开始()
+```
+
+---
+
+## 五、人脸检测
+
+### 5.1 人脸属性检测
+
+```
+定义 人脸检测(图片Base64)
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/rest/2.0/face/v3/detect",
+    "?access_token=", 全局变量 百度TOKEN
+  )
+  调用 Web客户端1.构建请求数据(
+    ["image", "image_type", "face_field"],
+    [图片Base64, "BASE64", "age,gender,beauty,expression,face_shape,emotion"]
+  )
+  调用 Web客户端1.发送POST请求()
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 结果 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 人脸 = 获取键路径的值(结果, ["result", "face_list", 0], {})
+  
+  如果 人脸 ≠ {} 则
+    设置 标签_年龄.文本 = 合并字符串("年龄：", 获取键的值(人脸, "age", "未知"))
+    设置 标签_性别.文本 = 如果 获取键的值(人脸, "gender", "") = "male" 则 "男" 否则 "女"
+    设置 标签_颜值.文本 = 合并字符串("颜值：", 四舍五入(获取键的值(人脸, "beauty", 0)))
+```
+
+---
+
+## 六、图像识别
+
+### 6.1 通用物体识别
+
+```
+定义 图像识别(图片Base64)
+  设置 Web客户端1.URL = 合并字符串(
+    "https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general",
+    "?access_token=", 全局变量 百度TOKEN
+  )
+  调用 Web客户端1.构建请求数据(
+    ["image", "image_type"],
+    [图片Base64, "BASE64"]
+  )
+  调用 Web客户端1.发送POST请求()
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 结果 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 物品列表 = 获取键的值(结果, "result", [])
+  
+  设置 标签_结果.文本 = ""
+  对于 每个 物品 在 物品列表 中
+    设置 标签_结果.文本 = 合并字符串(
+      标签_结果.文本,
+      获取键的值(物品, "keyword", ""),
+      " (", 四舍五入(获取键的值(物品, "score", 0) * 100), "%)",
+      "\n"
+    )
+```
+
+---
+
+## 七、常见问题
+
+### Q1：Token过期怎么办？
+
+Token有效期30天，需要定期刷新
+
+### Q2：调用限额
+
+免费版有QPS限制，高并发需要付费
+
+### Q3：图片太大
+
+压缩到100KB以内效果最好
+
+---
+
+## 参考资料
+
+- [百度AI开放平台](https://ai.baidu.com)
+- [百度语音文档](https://ai.baidu.com/tech/speech)
+- [百度人脸文档](https://ai.baidu.com/tech/face)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

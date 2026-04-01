@@ -1,0 +1,191 @@
+---
+title: WebView JavaScript处理器
+description: 利用WebViewer组件作为JavaScript处理器，将传统JavaScript代码与App Inventor应用集成
+---
+
+# WebView JavaScript处理器
+
+<ExtendedDescription>
+  **作者**：Rich Interdonato（MIT Master Trainer）
+
+  本教程展示如何将传统JavaScript代码与App Inventor应用集成，实现高级功能。
+</ExtendedDescription>
+
+## 核心API
+
+<ParamTable>
+  <ParamTableParam name="getWebViewString()" type="string">
+    App Inventor → JavaScript：读取应用传入的字符串
+  </ParamTableParam>
+  <ParamTableParam name="setWebViewString()" type="string">
+    JavaScript → App Inventor：将处理结果返回应用
+  </ParamTableParam>
+</ParamTable>
+
+## 工作流程
+
+```mermaid
+sequenceDiagram
+    App Inventor → WebViewer: 设置 WebViewString
+    WebViewer → JavaScript: getWebViewString() 读取
+    JavaScript → JavaScript: 处理数据
+    JavaScript → WebViewer: setWebViewString() 返回
+    WebViewer → App Inventor: WebViewString 属性变化
+```
+
+## 入门示例：文本反转
+
+<Steps>
+  <Step title="创建HTML文件">
+    创建 `javascriptWebViewProcessor.html`：
+
+    ```html
+    <!DOCTYPE html>
+    <html>
+    <head><title>文本反转</title></head>
+    <body onload="processJavascript();">
+    <script>
+        var input = window.AppInventor.getWebViewString();
+        var result = input.split("").reverse().join("");
+        window.AppInventor.setWebViewString(result);
+    </script>
+    </body>
+    </html>
+    ```
+  </Step>
+  <Step title="上传HTML文件">
+    在 App Inventor 中上传 HTML 文件到 Media
+  </Step>
+  <Step title="配置组件">
+    | 组件 | 名称 |
+    |------|------|
+    | TextBox | StringToBeProcessed |
+    | Button | btnProcess |
+    | WebViewer | WebViewer1 |
+    | Clock | Clock1 |
+  </Step>
+  <Step title="编写积木块">
+    ```blocks
+    当 Screen1.初始化 时
+      设置 WebViewer1.HomeUrl = "file:///android_asset/javascriptWebViewProcessor.html"
+    
+    当 btnProcess.点击 时
+      设置 WebViewer1.WebViewString = TextBox1.文本
+    
+    当 Clock1.定时 时
+      如果 WebViewer1.WebViewString ≠ TextBox1.文本 则
+        // 处理完成
+        调用 Notifier1.显示消息框("结果: " + WebViewer1.WebViewString)
+      如果结束
+    ```
+  </Step>
+</Steps>
+
+## 高级应用
+
+<AccordionGroup>
+  <Accordion title="Base64加密/解密" defaultOpen>
+    ```html
+    <script>
+    function process() {
+        var input = window.AppInventor.getWebViewString();
+        var parts = input.split("|");
+        var mode = parts[0];
+        var text = parts[1];
+        
+        var result = "";
+        if (mode === "encode") {
+            result = btoa(unescape(encodeURIComponent(text)));
+        } else {
+            result = decodeURIComponent(escape(atob(text)));
+        }
+        window.AppInventor.setWebViewString(result);
+    }
+    </script>
+    ```
+  </Accordion>
+
+  <Accordion title="MD5哈希">
+    下载 CryptoJS 库并上传：
+
+    ```html
+    <script src="md5.min.js"></script>
+    <script>
+    function calculateMD5() {
+        var input = window.AppInventor.getWebViewString();
+        var hash = MD5(input);
+        window.AppInventor.setWebViewString(hash);
+    }
+    </script>
+    ```
+  </Accordion>
+
+  <Accordion title="二维码生成">
+    使用 QRCode.js 库：
+
+    ```html
+    <script src="qrcode.min.js"></script>
+    <script>
+    var text = window.AppInventor.getWebViewString();
+    new QRCode(document.getElementById("qrcode"), text);
+    // 返回Base64图片
+    </script>
+    ```
+  </Accordion>
+
+  <Accordion title="图片灰度处理">
+    使用 Canvas 处理图像：
+
+    ```javascript
+    var img = new Image();
+    img.onload = function() {
+        // 绘制到Canvas
+        ctx.drawImage(img, 0, 0);
+        // 获取像素数据
+        var data = ctx.getImageData(0, 0, w, h).data;
+        // 转灰度
+        for (var i = 0; i < data.length; i += 4) {
+            var avg = (data[i] + data[i+1] + data[i+2]) / 3;
+            data[i] = data[i+1] = data[i+2] = avg;
+        }
+        // 返回Base64
+        window.AppInventor.setWebViewString(canvas.toDataURL());
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 实用JavaScript库
+
+<ResponseTable
+  data={[
+    { name: "CryptoJS", description: "加密解密、哈希", cdn: "cdnjs.cloudflare.com" },
+    { name: "QRCode.js", description: "二维码生成", cdn: "cdn.bootcdn.net" },
+    { name: "Moment.js", description: "日期处理", cdn: "momentjs.com" },
+    { name: "Chart.js", description: "图表绘制", cdn: "cdn.jsdelivr.net" },
+    { name: "PapaParse", description: "CSV解析", cdn: "cdnjs.cloudflare.com" }
+  ]}
+/>
+
+## 常见问题
+
+<AccordionGroup>
+  <Accordion title="WebViewer不加载HTML？">
+    检查：
+    - HTML文件是否上传到 Media
+    - HomeUrl 路径是否正确
+    - debugMode 下和打包后的路径不同
+  </Accordion>
+  <Accordion title="通信失败？">
+    检查：
+    - window.AppInventor 函数是否拼写正确
+    - setWebViewString 是否在页面加载完成后调用
+    - 是否有JavaScript错误
+  </Accordion>
+</AccordionGroup>
+
+<Callout type="info" title="原文来源">
+  本教程基于 Rich Interdonato（MIT Master Trainer）的原创教程：  
+  [WebView Javascript Processor](https://appinventor.mit.edu/explore/ai2/webview-javascript)  
+  采用 CC BY-SA 4.0 授权
+</Callout>

@@ -1,0 +1,469 @@
+---
+title: App Inventor 2 后台计时器深度解析
+description: // 结合AlarmManager + ForegroundService 初始化全局变量 是否运行中 = 假
+---
+
+
+# App Inventor 2 后台计时器深度解析
+
+---
+
+## 一、问题描述
+
+### 1.1 现象
+
+```
+用户常见问题：
+- "计时器在息屏后就不走了"
+- "倒计时在后台就停止了"
+- "闹钟应用关屏后不响"
+- "定时任务关屏后不执行"
+```
+
+### 1.2 根本原因
+
+```
+Android省电机制：
+┌─────────────────────────────────────┐
+│  用户按电源键 → 屏幕关闭            │
+│      ↓                              │
+│  系统进入休眠状态                    │
+│      ↓                              │
+│  CPU降低频率/暂停                    │
+│      ↓                              │
+│  普通计时器被暂停 ❌                 │
+│      ↓                              │
+│  需要唤醒服务才能继续执行            │
+└─────────────────────────────────────┘
+```
+
+**结论**：Android为了省电，会暂停后台应用的所有定时任务。App Inventor的Clock组件在息屏后不工作是**正常行为**，不是Bug。
+
+---
+
+## 二、解决方案总览
+
+| 方案 | 精度 | 息屏工作 | 复杂度 | 推荐场景 |
+|------|------|---------|--------|---------|
+| AlarmManager | 秒级 | ✅ | ⭐⭐ | 定时任务、闹钟 |
+| ForegroundService | 毫秒级 | ✅ | ⭐⭐⭐ | 实时监控 |
+| FCM推送 | 不确定 | ✅ | ⭐⭐ | 消息通知 |
+| Screen永远开启 | 毫秒级 | ❌ | ⭐ | 测试/演示 |
+
+---
+
+## 三、方案详解
+
+### 3.1 AlarmManager（推荐 - 定时任务）
+
+```
+// 使用AlarmManager扩展
+初始化全局变量 提醒间隔 = 60000  // 60秒
+
+当 Screen1.初始化 时
+  调用 AlarmManager1.初始化()
+
+当 Button_设置提醒.被点击 时
+  设置 全局变量 触发时间 = 调用 时钟1.获取时间毫秒() + 全局变量 提醒间隔
+  调用 AlarmManager1.设置精确闹钟(
+    触发时间: 全局变量 触发时间,
+    触发意图: "com.example.myapp.ALARM_ACTION"
+  )
+
+当 AlarmManager1.闹钟触发(请求码) 时
+  // 这里会唤醒应用执行
+  调用 Notifier1.显示消息("提醒时间到！")
+  调用 播放提示音()
+  
+  // 设置下次提醒（循环）
+  设置 全局变量 触发时间 = 调用 时钟1.获取时间毫秒() + 全局变量 提醒间隔
+  调用 AlarmManager1.设置精确闹钟(触发时间: 全局变量 触发时间, 触发意图: "com.example.myapp.ALARM_ACTION")
+```
+
+### 3.2 AlarmManager（闹钟应用）
+
+```
+// 定时执行任务（每天固定时间）
+初始化全局变量 目标小时 = 9
+初始化全局变量 目标分钟 = 0
+
+过程 计算下次触发时间
+  设置 全局变量 当前时间 = 调用 时钟1.Now()
+  设置 全局变量 目标时间 = 调用 时钟1.MakeInstantFromParts(
+    调用 时钟1.Year(全局变量 当前时间),
+    调用 时钟1.Month(全局变量 当前时间),
+    调用 时钟1.DayOfMonth(全局变量 当前时间),
+    全局变量 目标小时,
+    全局变量 目标分钟,
+    0
+  )
+  
+  // 如果已过今天的时间，计算明天的
+  如果 全局变量 目标时间 < 全局变量 当前时间 则
+    设置 全局变量 目标时间 = 全局变量 目标时间 + 86400000  // 加一天
+  如果结束
+  
+  返回 全局变量 目标时间
+过程结束
+
+当 Button_设置闹钟.被点击 时
+  设置 全局变量 触发时间 = 调用 计算下次触发时间()
+  调用 AlarmManager1.设置精确闹钟(
+    触发时间: 全局变量 触发时间,
+    触发意图: "com.example.myapp.DAILY_ALARM"
+  )
+  调用 Notifier1.显示消息("闹钟已设置：" + 调用 时钟1.FormatDateTime(全局变量 触发时间, "HH:mm"))
+
+当 AlarmManager1.闹钟触发(请求码) 时
+  // 播放闹钟
+  调用 Player1.Start()
+  
+  // 显示通知
+  调用 NotificationExtension1.发送通知(
+    标题: "⏰ 闹钟",
+    内容: "该起床了！",
+    通知ID: 1
+  )
+```
+
+### 3.3 ForegroundService（实时监控）
+
+```
+// 前台服务 - 保持应用活跃
+当 Screen1.初始化 时
+  // 申请必要权限
+  调用 权限扩展1.申请权限([
+    "android.permission.FOREGROUND_SERVICE",
+    "android.permission.POST_NOTIFICATIONS"
+  ])
+
+当 权限扩展1.权限结果(权限, 是否授予) 时
+  如果 是否授予 = 真 则
+    调用 启动前台服务()
+  如果结束
+
+过程 启动前台服务
+  调用 ForegroundService1.启动(
+    通知标题: "监控运行中",
+    通知内容: "后台任务正在执行...",
+    通知ID: 1001
+  )
+  
+  // 开启定时检查
+  调用 时钟1.开启定时器(间隔: 5000)  // 5秒
+
+当 Screen1.暂停 时
+  // 应用进入后台时不关闭服务
+  设置 全局变量 后台模式 = 真
+
+当 Screen1.恢复 时
+  设置 全局变量 后台模式 = 假
+
+当 时钟1.计时 时
+  // 即使在后台也会执行
+  调用 检查数据()
+  
+  // 更新通知内容（显示状态）
+  调用 ForegroundService1.更新通知(
+    通知ID: 1001,
+    新内容: "最后检查: " + 调用 时钟1.FormatDateTime(调用 时钟1.Now(), "HH:mm:ss")
+  )
+```
+
+### 3.4 FCM推送（远程通知）
+
+```
+// Firebase Cloud Messaging
+// 适用于：服务器需要唤醒App处理数据
+
+// 1. Firebase控制台配置
+// 2. 添加FCM扩展
+// 3. 接收推送
+
+当 Screen1.初始化 时
+  调用 FCMExtension1.初始化()
+  调用 FCMExtension1.订阅主题("notifications")
+
+当 FCMExtension1.收到消息(标题, 内容, 数据) 时
+  // 即使App在后台也会收到
+  调用 NotificationExtension1.发送通知(
+    标题: 标题,
+    内容: 内容,
+    通知ID: 2
+  )
+  
+  // 处理数据
+  如果 数据 ≠ 空 则
+    调用 处理推送数据(数据)
+  如果结束
+
+过程 处理推送数据(数据)
+  // 解析推送数据并执行相应操作
+  设置 全局变量 命令 = 获取键的值(JSON.文本转字典(数据), "command", "")
+  
+  如果 全局变量 命令 = "refresh" 则
+    调用 刷新数据()
+  否则 如果 全局变量 命令 = "sync" 则
+    调用 同步数据()
+  如果结束
+过程结束
+```
+
+### 3.5 息屏测试模式
+
+```
+// 仅用于测试/演示，不要用于生产环境
+当 Screen1.初始化 时
+  // 保持屏幕常亮
+  设置 Screen1.ScreenAlwaysOn = 真
+
+当 Button_开始监控.被点击 时
+  调用 时钟1.开启定时器(间隔: 1000)
+  调用 Notifier1.显示消息("开始监控，请锁屏测试")
+
+当 时钟1.计时 时
+  // 记录日志
+  设置 全局变量 日志 = 全局变量 日志 + 
+    调用 时钟1.FormatDateTime(调用 时钟1.Now(), "HH:mm:ss") + "\n"
+  设置 Label_Log.文本 = 全局变量 日志
+```
+
+---
+
+## 四、进阶方案
+
+### 4.1 组合方案（最可靠）
+
+```
+// 结合AlarmManager + ForegroundService
+初始化全局变量 是否运行中 = 假
+
+当 Button_启动服务.被点击 时
+  如果 全局变量 是否运行中 = 假 则
+    设置 全局变量 是否运行中 = 真
+    
+    // 1. 启动前台服务
+    调用 ForegroundService1.启动(
+      通知标题: "任务运行中",
+      通知内容: "后台任务执行中...",
+      通知ID: 2001
+    )
+    
+    // 2. 设置AlarmManager作为备份
+    调用 设置定时检查()
+    
+    // 3. 开启本地计时器
+    调用 时钟1.开启定时器(间隔: 10000)
+  如果结束
+
+过程 设置定时检查
+  设置 全局变量 下次检查 = 调用 时钟1.获取时间毫秒() + 60000
+  调用 AlarmManager1.设置精确闹钟(
+    触发时间: 全局变量 下次检查,
+    触发意图: "com.example.myapp.BACKUP_CHECK"
+  )
+过程结束
+
+当 AlarmManager1.闹钟触发(请求码) 时
+  如果 全局变量 是否运行中 = 真 则
+    调用 执行后台任务()
+    调用 设置定时检查()  // 重新设置
+  如果结束
+
+当 Screen1.暂停 时
+  // 不停止服务，继续运行
+  空
+
+当 Screen1.销毁 时
+  // 清理资源
+  如果 全局变量 是否运行中 = 真 则
+    调用 ForegroundService1.停止()
+    调用 AlarmManager1.取消所有闹钟()
+    设置 全局变量 是否运行中 = 假
+  如果结束
+```
+
+### 4.2 定时同步方案
+
+```
+// 适用于：定期从服务器获取数据
+初始化全局变量 同步间隔 = 900000  // 15分钟
+
+当 Button_启动同步.被点击 时
+  调用 启动定时同步()
+
+过程 启动定时同步
+  // 设置AlarmManager定时触发
+  设置 全局变量 下次同步 = 调用 时钟1.获取时间毫秒() + 全局变量 同步间隔
+  调用 AlarmManager1.设置精确闹钟(
+    触发时间: 全局变量 下次同步,
+    触发意图: "com.example.myapp.SYNC_ACTION"
+  )
+过程结束
+
+当 AlarmManager1.闹钟触发(请求码) 时
+  // 在后台唤醒执行
+  调用 执行数据同步()
+  
+  // 设置下次同步
+  调用 启动定时同步()
+
+过程 执行数据同步
+  // 从服务器获取最新数据
+  调用 Web1.发送文本请求(网址: "https://api.example.com/data")
+  
+  // 保存到本地
+  当 Web1.收到文本响应(响应) 时
+    调用 TinyDB1.存储值(标签: "last_sync", 值为标签: 调用 时钟1.Now())
+    调用 TinyDB1.存储值(标签: "cached_data", 值为标签: 响应)
+  如果结束
+过程结束
+```
+
+---
+
+## 五、权限配置
+
+### 5.1 AndroidManifest（扩展自动添加）
+
+```xml
+<!-- 前台服务权限 -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+<!-- 精确闹钟权限（Android 12+）-->
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+<!-- 后台位置权限（Android 10+）-->
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+<!-- 忽略电池优化 -->
+<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+```
+
+### 5.2 请求权限
+
+```
+当 Screen1.初始化 时
+  调用 权限扩展1.申请权限([
+    "android.permission.SCHEDULE_EXACT_ALARM",
+    "android.permission.POST_NOTIFICATIONS",
+    "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+  ])
+```
+
+---
+
+## 六、测试方法
+
+### 6.1 息屏测试步骤
+
+```
+1. 确保应用有后台权限
+2. 启动服务/设置闹钟
+3. 按电源键息屏
+4. 等待预定时间
+5. 观察是否触发
+```
+
+### 6.2 日志调试
+
+```
+过程 记录日志(消息)
+  设置 全局变量 日志内容 = 调用 时钟1.FormatDateTime(调用 时钟1.Now(), "HH:mm:ss") + 
+                        " | " + 消息 + "\n" + 全局变量 日志内容
+  // 写入文件
+  调用 File1.追加文本(
+    文件名: "/sdcard/log.txt",
+    文本: 全局变量 日志内容
+  )
+过程结束
+
+当 时钟1.计时 时
+  调用 记录日志("计时器执行")
+
+当 AlarmManager1.闹钟触发(请求码) 时
+  调用 记录日志("闹钟触发: " + 请求码)
+```
+
+---
+
+## 七、常见问题
+
+### Q1: 为什么息屏后计时器停了？
+
+**A**: Android省电机制会暂停后台应用。这是正常行为，不是Bug。
+
+### Q2: AlarmManager一定能触发吗？
+
+**A**: 不一定。Android可能会推迟高功耗操作。建议配合ForegroundService使用。
+
+### Q3: 如何确保闹钟一定响？
+
+**A**: 
+1. 使用AlarmManager + ForegroundService组合
+2. 用户手动关闭电池优化
+3. 在通知中显示倒计时，让用户知道
+
+### Q4: FCM推送有什么限制？
+
+**A**: 
+1. 需要网络连接
+2. 不保证即时性
+3. 适用于：消息通知、数据同步
+4. 不适用于：精确计时
+
+---
+
+## 八、总结
+
+### 8.1 选型建议
+
+```
+场景 → 推荐方案
+
+定时提醒/闹钟 → AlarmManager
+实时监控 → ForegroundService
+消息推送 → FCM
+数据同步 → AlarmManager + 网络请求
+精确计时 → ForegroundService
+```
+
+### 8.2 最佳实践
+
+```
+1. 组合方案最可靠
+   AlarmManager + ForegroundService
+
+2. 始终请求电池优化豁免
+   REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+
+3. 显示前台通知
+   让用户知道应用在运行
+
+4. 处理边界情况
+   网络断开、电量耗尽、用户强制停止
+
+5. 提供用户控制
+   让用户选择开启/关闭后台任务
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

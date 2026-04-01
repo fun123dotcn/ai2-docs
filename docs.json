@@ -1,0 +1,238 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "App Inventor 2 中文文档",
+  "colors": {
+    "primary": "#3b82f6",
+    "light": "#60a5fa",
+    "dark": "#2563eb"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "文档",
+        "groups": [
+          {
+            "group": "快速开始",
+            "pages": [
+              "content/getting-started/introduction"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "教程",
+        "groups": [
+          {
+            "group": "入门基础",
+            "pages": [
+              "content/tutorials/getting-started/countdown",
+              "content/tutorials/getting-started/login-register-beginner",
+              "content/tutorials/getting-started/login-register",
+              "content/tutorials/getting-started/multi-screen",
+              "content/tutorials/getting-started/screen-adaptation",
+              "content/tutorials/getting-started/screen-variable",
+              "content/tutorials/getting-started/architecture",
+              "content/tutorials/getting-started/publish"
+            ]
+          },
+          {
+            "group": "界面设计",
+            "pages": [
+              "content/tutorials/ui/dynamic-layout",
+              "content/tutorials/ui/listview",
+              "content/tutorials/ui/listview-custom",
+              "content/tutorials/ui/navigation",
+              "content/tutorials/ui/long-page",
+              "content/tutorials/ui/scroll-layout",
+              "content/tutorials/ui/animation",
+              "content/tutorials/ui/drag-object",
+              "content/tutorials/ui/ui-advanced",
+              "content/tutorials/ui/ui-design",
+              "content/tutorials/ui/notifier"
+            ]
+          },
+          {
+            "group": "数据处理",
+            "pages": [
+              "content/tutorials/data/json",
+              "content/tutorials/data/dictionary",
+              "content/tutorials/data/string-operations",
+              "content/tutorials/data/math",
+              "content/tutorials/data/number-conversion",
+              "content/tutorials/data/timestamp",
+              "content/tutorials/data/encryption",
+              "content/tutorials/data/data-storage",
+              "content/tutorials/data/tinywebdb",
+              "content/tutorials/data/sqlite",
+              "content/tutorials/data/firebase",
+              "content/tutorials/data/cloud-database"
+            ]
+          },
+          {
+            "group": "网络通信",
+            "pages": [
+              "content/tutorials/network/network-communication",
+              "content/tutorials/network/upload-image-server",
+              "content/tutorials/network/upload-image",
+              "content/tutorials/network/upload-file-bluetooth",
+              "content/tutorials/network/realtime-data",
+              "content/tutorials/network/webview-advanced",
+              "content/tutorials/network/baidu-ai",
+              "content/tutorials/network/dashscope-ai",
+              "content/tutorials/network/ai-llm",
+              "content/tutorials/network/ai-ml",
+              "content/tutorials/network/ai-integration",
+              "content/tutorials/network/share-login"
+            ]
+          },
+          {
+            "group": "硬件交互",
+            "pages": [
+              "content/tutorials/hardware/bluetooth",
+              "content/tutorials/hardware/ble",
+              "content/tutorials/hardware/ble-nfc-voice",
+              "content/tutorials/hardware/serial",
+              "content/tutorials/hardware/serial-assistant",
+              "content/tutorials/hardware/usb-device",
+              "content/tutorials/hardware/sensor",
+              "content/tutorials/hardware/sensors",
+              "content/tutorials/hardware/sensor-advanced",
+              "content/tutorials/hardware/sensor-apps",
+              "content/tutorials/hardware/hardware-integration",
+              "content/tutorials/hardware/modbus-protocol",
+              "content/tutorials/hardware/can-protocol",
+              "content/tutorials/hardware/map-nfc-ble"
+            ]
+          },
+          {
+            "group": "媒体处理",
+            "pages": [
+              "content/tutorials/media/camera",
+              "content/tutorials/media/audio",
+              "content/tutorials/media/image-processing",
+              "content/tutorials/media/image-processing-advanced",
+              "content/tutorials/media/image-scale",
+              "content/tutorials/media/video-player",
+              "content/tutorials/media/video-player-full",
+              "content/tutorials/media/barcode",
+              "content/tutorials/media/save-photo",
+              "content/tutorials/media/remote-audio"
+            ]
+          },
+          {
+            "group": "进阶功能",
+            "pages": [
+              "content/tutorials/advanced/dynamic-components",
+              "content/tutorials/advanced/dynamic-extension",
+              "content/tutorials/advanced/background-task",
+              "content/tutorials/advanced/background-timer",
+              "content/tutorials/advanced/clipboard",
+              "content/tutorials/advanced/file-operations",
+              "content/tutorials/advanced/file-manager",
+              "content/tutorials/advanced/file-search",
+              "content/tutorials/advanced/multi-language",
+              "content/tutorials/advanced/performance",
+              "content/tutorials/advanced/system-features",
+              "content/tutorials/advanced/push-notification",
+              "content/tutorials/advanced/iap",
+              "content/tutorials/advanced/ios-companion",
+              "content/tutorials/advanced/block-finder"
+            ]
+          },
+          {
+            "group": "游戏开发",
+            "pages": [
+              "content/tutorials/games/game-dev",
+              "content/tutorials/games/game-flipcard",
+              "content/tutorials/games/billiard-game",
+              "content/tutorials/games/minigolf-game"
+            ]
+          },
+          {
+            "group": "实战项目",
+            "pages": [
+              "content/tutorials/projects/attendance-system",
+              "content/tutorials/projects/map",
+              "content/tutorials/projects/map-geofence",
+              "content/tutorials/projects/chart",
+              "content/tutorials/projects/echarts",
+              "content/tutorials/projects/random-advanced",
+              "content/tutorials/projects/datetime-phone",
+              "content/tutorials/clouddb-chat",
+              "content/tutorials/projects/clouddb-realtime-chat",
+              "content/tutorials/projects/wheres-my-car",
+              "content/tutorials/projects/webview-javascript"
+            ]
+          },
+          {
+            "group": "扩展",
+            "pages": [
+              "content/tutorials/extensions/best-extensions",
+              "content/tutorials/extensions/extension-problems"
+            ]
+          },
+          {
+            "group": "故障排查",
+            "pages": [
+              "content/tutorials/troubleshooting/compilation-error",
+              "content/tutorials/troubleshooting/error-codes",
+              "content/tutorials/troubleshooting/aab-apk-build",
+              "content/tutorials/troubleshooting/yacodeblocks",
+              "content/tutorials/troubleshooting/advanced-features",
+              "content/tutorials/troubleshooting/compilation-error-full"
+            ]
+          },
+          {
+            "group": "参考资料",
+            "pages": [
+              "content/tutorials/reference/mit-sources-updates",
+              "content/tutorials/reference/matrix-complete"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "官方社区",
+          "href": "https://community.appinventor.mit.edu",
+          "icon": "comments"
+        },
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/mit-cml/appinventor-sources",
+          "icon": "github"
+        }
+      ]
+    }
+  },
+  "logo": "/favicon.svg",
+  "background": {
+    "color": {
+      "dark": "#0d1117"
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "官网",
+        "href": "https://www.fun123.cn"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "开始使用",
+      "href": "https://ai2.appinventor.mit.edu"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/mit-cml/appinventor-sources",
+      "website": "https://www.fun123.cn"
+    }
+  },
+  "url": "http://localhost:3333"
+}

@@ -1,0 +1,258 @@
+---
+title: App Inventor 2 视频播放器教程
+description: "覆盖：内置VideoPlayer组件、网络视频播放、全屏控制、Plyr播放器方案。"
+---
+
+
+# App Inventor 2 视频播放器教程
+
+> 覆盖：内置VideoPlayer组件、网络视频播放、全屏控制、Plyr播放器方案。
+
+---
+
+## 一、内置VideoPlayer组件
+
+### 1.1 支持的格式
+
+| 格式 | 说明 |
+|------|------|
+| MP4（.mp4） | ✅ 推荐，兼容性最好 |
+| 3GPP（.3gp） | ✅ 支持 |
+| 网络流媒体URL | ✅ 支持直链URL |
+
+> ⚠️ 注意：App内置视频文件大小限制1MB，总App大小限制5MB。大视频请用网络URL。
+
+### 1.2 核心属性
+
+| 属性 | 说明 |
+|------|------|
+| 视频源（Source） | 视频文件名或URL |
+| 全屏（FullScreen） | 是否全屏播放 |
+| 音量（Volume） | 0~100 |
+
+### 1.3 核心方法
+
+| 方法 | 说明 |
+|------|------|
+| `开始()` | 播放 |
+| `暂停()` | 暂停 |
+| `跳转到(毫秒)` | 跳转到指定位置 |
+| `获取时长()` | 获取视频总时长（毫秒） |
+
+### 1.4 核心事件
+
+| 事件 | 说明 |
+|------|------|
+| `播放完成时` | 视频播放结束 |
+
+---
+
+## 二、基础播放器代码
+
+### 2.1 播放本地视频
+
+```
+// 设计器中：将视频文件添加到项目媒体资源
+当 Screen1.初始化 时
+  设置 视频播放器1.视频源 = "my_video.mp4"    // 项目内的视频文件
+
+当 按钮_播放.被点击 时
+  调用 视频播放器1.开始
+
+当 按钮_暂停.被点击 时
+  调用 视频播放器1.暂停
+
+当 视频播放器1.播放完成时
+  调用 对话框1.显示消息对话框("播放完毕", "提示", "确定")
+```
+
+### 2.2 播放网络视频
+
+```
+初始化全局变量 视频URL = "https://example.com/video.mp4"
+
+当 Screen1.初始化 时
+  设置 视频播放器1.视频源 = 全局变量 视频URL
+  调用 视频播放器1.开始
+```
+
+### 2.3 带进度条的播放器
+
+```
+初始化全局变量 播放中 = 假
+
+当 按钮_播放暂停.被点击 时
+  如果 全局变量 播放中 = 假 则
+    调用 视频播放器1.开始
+    设置 全局变量 播放中 = 真
+    设置 按钮_播放暂停.文本 = "⏸ 暂停"
+    设置 计时器_进度.启用计时 = 真
+  否则
+    调用 视频播放器1.暂停
+    设置 全局变量 播放中 = 假
+    设置 按钮_播放暂停.文本 = "▶ 播放"
+    设置 计时器_进度.启用计时 = 假
+
+// 每秒更新进度条
+当 计时器_进度.计时 时
+  初始化局部变量 时长 = 调用 视频播放器1.获取时长
+  如果 时长 > 0 则
+    // 更新进度条（0~100）
+    设置 滑动条_进度.滑块位置 = 调用 视频播放器1.当前位置 * 100 / 时长
+    // 更新时间显示
+    设置 标签_时间.文本 = 合并字符串(
+      调用 毫秒转时间(调用 视频播放器1.当前位置),
+      " / ",
+      调用 毫秒转时间(时长)
+    )
+
+// 毫秒转时间格式
+定义 毫秒转时间(毫秒)
+  初始化局部变量 总秒 = 商(毫秒, 1000)
+  初始化局部变量 分 = 商(总秒, 60)
+  初始化局部变量 秒 = 余数(总秒, 60)
+  返回 合并字符串(
+    调用 补零(分, 2), ":", 调用 补零(秒, 2)
+  )
+
+// 拖动进度条跳转
+当 滑动条_进度.位置改变 时（滑块位置）
+  初始化局部变量 时长 = 调用 视频播放器1.获取时长
+  调用 视频播放器1.跳转到(四舍五入(滑块位置 * 时长 / 100))
+
+// 全屏切换
+当 按钮_全屏.被点击 时
+  设置 视频播放器1.全屏 = 非(视频播放器1.全屏)
+
+// 音量控制
+当 滑动条_音量.位置改变 时（滑块位置）
+  设置 视频播放器1.音量 = 四舍五入(滑块位置)
+
+// 播放完毕
+当 视频播放器1.播放完成时
+  设置 全局变量 播放中 = 假
+  设置 按钮_播放暂停.文本 = "▶ 播放"
+  设置 计时器_进度.启用计时 = 假
+  调用 视频播放器1.跳转到(0)    // 回到开头
+```
+
+---
+
+## 三、Plyr播放器（WebView方案）
+
+内置VideoPlayer功能有限，Plyr是一个开源HTML5播放器，通过WebView嵌入，界面更美观，功能更强。
+
+### 3.1 Plyr播放器HTML代码
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css"/>
+  <style>
+    body { margin: 0; background: #000; }
+    .plyr { width: 100%; }
+  </style>
+</head>
+<body>
+  <video id="player" playsinline controls>
+    <source src="VIDEO_URL_PLACEHOLDER" type="video/mp4"/>
+  </video>
+  <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+  <script>
+    const player = new Plyr('#player', {
+      controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+      autoplay: true
+    });
+    
+    // 添加缓冲动画
+    player.on('waiting', () => {
+      document.getElementById('loading').style.display = 'flex';
+    });
+    player.on('playing', () => {
+      document.getElementById('loading').style.display = 'none';
+    });
+  </script>
+  <div id="loading" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:20px;">
+    ⏳ 缓冲中...
+  </div>
+</body>
+</html>
+```
+
+### 3.2 App Inventor 2 代码块
+
+```
+初始化全局变量 视频URL = "https://example.com/video.mp4"
+
+当 Screen1.初始化 时
+  // 将HTML中的占位符替换为实际URL
+  初始化局部变量 HTML = 替换所有文本(
+    全局变量 PLYR_HTML模板,
+    "VIDEO_URL_PLACEHOLDER",
+    全局变量 视频URL
+  )
+  // 加载到WebView
+  调用 Web查看器1.加载HTML(HTML)
+
+// 切换视频
+定义 播放视频(URL)
+  设置 全局变量 视频URL = URL
+  调用 Web查看器1.执行脚本(
+    合并字符串("player.source = {type:'video',sources:[{src:'", URL, "',type:'video/mp4'}]};player.play();")
+  )
+```
+
+---
+
+## 四、常见问题
+
+### Q1：网络视频播放不了？
+
+- 确认URL是直链（以.mp4结尾），不是网页链接
+- 检查网络连接
+- 部分视频平台有防盗链，无法直接播放
+
+### Q2：视频文件太大打包失败？
+
+- App内置视频限制1MB，大视频必须用网络URL
+- 将视频上传到服务器或CDN，使用URL播放
+
+### Q3：全屏后返回App？
+
+- 设置 `视频播放器1.全屏 = 假` 退出全屏
+- 或监听返回键事件
+
+### Q4：Plyr播放器加载慢？
+
+- 将Plyr的CSS/JS文件下载到本地，通过App资源加载
+- 或使用国内CDN镜像
+
+---
+
+## 参考资料
+
+- [VideoPlayer组件文档](https://www.fun123.cn/reference/components/media.html#VideoPlayer)
+- [Plyr官网](https://plyr.io/)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

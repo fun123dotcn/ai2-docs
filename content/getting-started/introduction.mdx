@@ -1,0 +1,104 @@
+---
+title: 简介
+description: 了解 App Inventor 2 及其核心概念
+---
+
+# App Inventor 2 简介
+
+App Inventor 2（AI2）是一款由麻省理工学院（MIT）移动学习实验室开发的创新编程环境。它让任何人都能通过拖拽积木块的方式创建功能强大的 Android 应用。
+
+## 核心概念
+
+<AccordionGroup>
+  <Accordion title="积木块编程" icon="puzzle-piece">
+    不同于传统代码编写，App Inventor 使用可视化的积木块系统。每个积木块代表一个功能块，您只需要将它们像拼图一样组合在一起即可。
+
+    <CodeGroup>
+      ```blocks
+      如果 TextBox.Text ≠ "" 则
+        调用 Notifier1.显示消息框("您好！" + TextBox.Text)
+      否则
+        调用 Notifier1.显示消息框("请输入内容")
+      ```
+      ```java
+      // 对应的Java代码
+      if (!textBox.getText().equals("")) {
+          showAlert("您好！" + textBox.getText());
+      } else {
+          showAlert("请输入内容");
+      }
+      ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion title="设计器与积木编辑器" icon="layout">
+    App Inventor 有两个主要视图：
+
+    **设计器 (Designer)**
+    - 可视化设计应用界面
+    - 添加和配置组件
+    - 设置组件属性
+
+    **积木编辑器 (Blocks Editor)**
+    - 编写应用逻辑
+    - 拖拽组合积木块
+    - 定义事件响应
+  </Accordion>
+
+  <Accordion title="组件" icon="box">
+    组件是应用的基本构建单元，分为两类：
+
+    **可见组件**：按钮、文本框、图片、列表等直接在界面上显示的元素
+
+    **不可见组件**：计时器、数据库、网络请求等后台逻辑组件
+  </Accordion>
+
+  <Accordion title="事件与响应" icon="zap">
+    App Inventor 采用事件驱动编程模型：
+
+    ```blocks
+    当 按钮1.被点击 时
+      // 执行相应操作
+      调用 Notifier1.显示消息框("按钮被点击了！")
+    ```
+
+    应用等待用户操作（事件），然后执行对应的响应代码。
+  </Accordion>
+</AccordionGroup>
+
+## App Inventor 2 新特性
+
+<Steps>
+  <Step title="云端开发">
+    所有工作都在浏览器中完成，无需安装任何软件。您的项目安全存储在云端。
+  </Step>
+  <Step title="实时预览">
+    通过 MIT AI2 Companion 应用，可以实时在手机上预览和调试您的应用。
+  </Step>
+  <Step title="AI 集成">
+    内置机器学习组件，支持图像识别、语音识别、自然语言处理等 AI 功能。
+  </Step>
+  <Step title="跨平台">
+    除了 Android，现在还支持 iOS 开发，真正实现一次编写，多平台运行。
+  </Step>
+</Steps>
+
+## 系统要求
+
+<ParamTable>
+  <ParamTableParam name="浏览器" required type="string">
+    Chrome、Edge、Firefox 或 Safari 的最新版本
+  </ParamTableParam>
+  <ParamTableParam name="Google 账户" required type="string">
+    用于登录和保存项目
+  </ParamTableParam>
+  <ParamTableParam name="Android 设备" type="string">
+    Android 6.0 或更高版本（可选，但推荐）
+  </ParamTableParam>
+</ParamTable>
+
+## 下一步
+
+<Card title="创建您的第一个应用" icon="rocket" href="/getting-started/first-app">
+  按照我们的分步指南，5分钟内创建您的第一个 App Inventor 应用！
+</Card>

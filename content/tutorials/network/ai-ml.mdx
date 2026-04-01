@@ -1,0 +1,286 @@
+---
+title: App Inventor 2 AI/ML应用教程
+description: // 使用WebViewer + OpenCV.js进行图像矫正 // HTML页面 <script src="https://docs.opencv.org/4.x/opencv.js"></script> <script>…
+---
+
+
+# App Inventor 2 AI/ML应用教程
+
+---
+
+## 一、PoseNet姿态识别扩展
+
+```
+// PosenetExtension - 人体姿态识别
+当 Screen1.初始化 时
+  调用 PosenetExtension1.初始化(
+    模型: "MobileNetV1",
+    输入分辨率: 257,
+    步幅: 16
+  )
+  调用 PosenetExtension1.开始摄像头()
+
+当 PosenetExtension1.姿态检测结果(关键点列表) 时
+  // 关键点包括：鼻子、眼睛、耳朵、肩膀、手肘、手腕、臀部、膝盖、脚踝
+  
+  // 获取鼻子位置
+  设置 全局变量 鼻子 = 获取列表项目(关键点列表, 1)
+  设置 全局变量 鼻子X = 获取键的值(全局变量 鼻子, "x", 0)
+  设置 全局变量 鼻子Y = 获取键的值(全局变量 鼻子, "y", 0)
+  设置 全局变量 鼻子置信度 = 获取键的值(全局变量 鼻子, "score", 0)
+  
+  // 获取双手位置
+  设置 全局变量 左手腕 = 获取列表项目(关键点列表, 10)
+  设置 全局变量 右手腕 = 获取列表项目(关键点列表, 9)
+  
+  // 判断姿势
+  调用 分析姿势(关键点列表)
+
+过程 分析姿势(关键点列表)
+  // 获取关键点
+  设置 全局变量 左肩 = 获取列表项目(关键点列表, 6)
+  设置 全局变量 右肩 = 获取列表项目(关键点列表, 5)
+  设置 全局变量 左臀 = 获取列表项目(关键点列表, 12)
+  设置 全局变量 右臀 = 获取列表项目(关键点列表, 11)
+  
+  // 计算躯干倾斜角度
+  设置 全局变量 肩中X = (获取键的值(全局变量 左肩, "x", 0) + 获取键的值(全局变量 右肩, "x", 0)) / 2
+  设置 全局变量 肩中Y = (获取键的值(全局变量 左肩, "y", 0) + 获取键的值(全局变量 右肩, "y", 0)) / 2
+  设置 全局变量 臀中X = (获取键的值(全局变量 左臀, "x", 0) + 获取键的值(全局变量 右臀, "x", 0)) / 2
+  设置 全局变量 臀中Y = (获取键的值(全局变量 左臀, "y", 0) + 获取键的值(全局变量 右臀, "y", 0)) / 2
+  
+  // 判断坐姿
+  如果 绝对值(全局变量 肩中X - 全局变量 臀中X) < 20 则
+    设置 Label_Posture.文本 = "✅ 坐姿端正"
+  否则
+    设置 Label_Posture.文本 = "⚠️ 坐姿偏斜"
+  如果结束
+过程结束
+```
+
+---
+
+## 二、图像矫正
+
+```
+// 使用WebViewer + OpenCV.js进行图像矫正
+// HTML页面
+```html
+<script src="https://docs.opencv.org/4.x/opencv.js"></script>
+<script>
+function correctImage(imageData) {
+  // 加载图像
+  var img = cv.imread('inputCanvas');
+  var dst = new cv.Mat();
+  
+  // 灰度化
+  cv.cvtColor(img, dst, cv.COLOR_RGBA2GRAY);
+  
+  // 边缘检测
+  var edges = new cv.Mat();
+  cv.Canny(dst, edges, 50, 150);
+  
+  // 查找轮廓
+  var contours = new cv.MatVector();
+  var hierarchy = new cv.Mat();
+  cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  
+  // 找最大轮廓（文档边缘）
+  var maxArea = 0;
+  var maxContour = null;
+  for (var i = 0; i < contours.size(); i++) {
+    var area = cv.contourArea(contours.get(i));
+    if (area > maxArea) {
+      maxArea = area;
+      maxContour = contours.get(i);
+    }
+  }
+  
+  // 透视变换矫正
+  if (maxContour) {
+    var approx = new cv.Mat();
+    cv.approxPolyDP(maxContour, approx, 0.02 * cv.arcLength(maxContour, true), true);
+    
+    if (approx.rows === 4) {
+      // 四点透视变换
+      var srcPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        approx.data32F[0], approx.data32F[1],
+        approx.data32F[2], approx.data32F[3],
+        approx.data32F[4], approx.data32F[5],
+        approx.data32F[6], approx.data32F[7]
+      ]);
+      
+      var dstPoints = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        0, 0, 400, 0, 400, 600, 0, 600
+      ]);
+      
+      var M = cv.getPerspectiveTransform(srcPoints, dstPoints);
+      var corrected = new cv.Mat();
+      cv.warpPerspective(img, corrected, M, new cv.Size(400, 600));
+      
+      cv.imshow('outputCanvas', corrected);
+      AppInventor.setWebViewString('correction_done');
+    }
+  }
+}
+</script>
+```
+
+---
+
+## 三、人脸考勤系统
+
+```
+// 使用百度人脸识别API
+初始化全局变量 百度_Access_Token = ""
+初始化全局变量 员工数据库 = {}
+
+// 注册员工人脸
+过程 注册员工人脸(员工ID, 员工姓名, 图片路径)
+  设置 全局变量 图片Base64 = 调用 图像扩展1.图片转Base64(图片路径)
+  
+  调用 Web1.设置请求头([["Content-Type", "application/json"]])
+  调用 Web1.发送文本请求(
+    网址: "https://aip.baidubce.com/rest/2.0/face/v3/faceset/user/add?access_token=" + 全局变量 百度_Access_Token,
+    方法: "POST",
+    内容: 调用 JSON.字典转文本({
+      "image": 全局变量 图片Base64,
+      "image_type": "BASE64",
+      "group_id": "employees",
+      "user_id": 员工ID,
+      "user_info": 员工姓名
+    })
+  )
+
+// 人脸打卡
+过程 人脸打卡
+  // 拍照
+  调用 Camera1.拍照()
+
+当 Camera1.拍照完成(图片路径) 时
+  设置 全局变量 图片Base64 = 调用 图像扩展1.图片转Base64(图片路径)
+  
+  // 人脸搜索
+  调用 Web1.发送文本请求(
+    网址: "https://aip.baidubce.com/rest/2.0/face/v3/search?access_token=" + 全局变量 百度_Access_Token,
+    方法: "POST",
+    内容: 调用 JSON.字典转文本({
+      "image": 全局变量 图片Base64,
+      "image_type": "BASE64",
+      "group_id_list": "employees",
+      "max_user_num": 1
+    })
+  )
+
+当 Web1.收到文本响应(响应文本) 时
+  设置 全局变量 结果 = 调用 JSON.文本转字典(响应文本)
+  设置 全局变量 错误码 = 获取键的值(全局变量 结果, "error_code", -1)
+  
+  如果 全局变量 错误码 = 0 则
+    设置 全局变量 用户列表 = 获取键的值(获取键的值(全局变量 结果, "result", {}), "user_list", [])
+    
+    如果 获取列表长度(全局变量 用户列表) > 0 则
+      设置 全局变量 用户 = 获取列表项目(全局变量 用户列表, 1)
+      设置 全局变量 置信度 = 获取键的值(全局变量 用户, "score", 0)
+      
+      如果 全局变量 置信度 > 80 则
+        设置 全局变量 员工ID = 获取键的值(全局变量 用户, "user_id", "")
+        设置 全局变量 员工姓名 = 获取键的值(全局变量 用户, "user_info", "")
+        
+        // 记录打卡
+        调用 记录打卡(全局变量 员工ID, 全局变量 员工姓名)
+        调用 Notifier1.显示消息("✅ " + 全局变量 员工姓名 + " 打卡成功！")
+      否则
+        调用 Notifier1.显示消息("❌ 人脸识别失败，请重试")
+      如果结束
+    如果结束
+  如果结束
+
+过程 记录打卡(员工ID, 员工姓名)
+  设置 全局变量 打卡记录 = {
+    "employee_id": 员工ID,
+    "name": 员工姓名,
+    "time": 调用 时钟1.格式化时间("yyyy-MM-dd HH:mm:ss"),
+    "type": 调用 判断打卡类型()
+  }
+  
+  // 保存到TinyDB
+  设置 全局变量 今日记录 = 调用 TinyDB1.获取值(标签: "attendance_" + 调用 时钟1.格式化时间("yyyyMMdd"), 值为标签默认: "[]")
+  设置 全局变量 记录列表 = 调用 JSON.文本转列表(全局变量 今日记录)
+  添加项目到列表(全局变量 记录列表, 全局变量 打卡记录)
+  调用 TinyDB1.存储值(标签: "attendance_" + 调用 时钟1.格式化时间("yyyyMMdd"), 值为标签: 调用 JSON.列表转文本(全局变量 记录列表))
+过程结束
+```
+
+---
+
+## 四、AI生成积木块/YAIL研究
+
+```
+// YAIL (Yet Another Intermediate Language) - App Inventor的中间语言
+// 积木块 → YAIL → Android代码
+
+// YAIL示例（对应积木：设置Label1.文本 = "Hello"）
+// (call-component-method Label1 "Text" "Hello")
+
+// AI生成积木块思路：
+// 1. 用户描述功能（自然语言）
+// 2. AI生成YAIL代码
+// 3. 转换为积木块XML
+// 4. 导入App Inventor
+
+// 积木块XML格式
+// <block type="component_set_get">
+//   <field name="COMPONENT_SELECTOR">Label1</field>
+//   <field name="PROP">Text</field>
+//   <value name="VALUE">
+//     <block type="text">
+//       <field name="TEXT">Hello</field>
+//     </block>
+//   </value>
+// </block>
+
+// 通过AI API生成积木
+过程 AI生成积木(功能描述)
+  调用 Web1.设置请求头([
+    ["Content-Type", "application/json"],
+    ["Authorization", "Bearer " + 全局变量 AI_API_Key]
+  ])
+  
+  调用 Web1.发送文本请求(
+    网址: "https://api.openai.com/v1/chat/completions",
+    方法: "POST",
+    内容: 调用 JSON.字典转文本({
+      "model": "gpt-4",
+      "messages": [{
+        "role": "system",
+        "content": "你是App Inventor 2专家，将用户描述转换为积木块代码"
+      }, {
+        "role": "user",
+        "content": 功能描述
+      }]
+    })
+  )
+过程结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

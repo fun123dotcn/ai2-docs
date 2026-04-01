@@ -1,0 +1,553 @@
+---
+title: App Inventor 2 Modbus协议详解
+description: "本教程深入讲解Modbus工业通信协议，包括RTU/TCP两种模式，数据帧格式，功能码详解，寄存器映射，以及App Inventor扩展开发指南。"
+---
+
+
+# App Inventor 2 Modbus协议详解
+
+> 本教程深入讲解Modbus工业通信协议，包括RTU/TCP两种模式，数据帧格式，功能码详解，寄存器映射，以及App Inventor扩展开发指南。
+
+---
+
+## 一、Modbus协议概述
+
+### 1.1 协议特点
+
+| 特性 | 说明 |
+|------|------|
+| 类型 | 主从式串行通信 |
+| 物理层 | RS-485/RS-232/RS-422 |
+| 应用层 | 请求-响应模式 |
+| 数据格式 | 工业标准寄存器 |
+| 传输模式 | RTU / ASCII / TCP |
+
+### 1.2 协议优势
+
+- ✅ 简单易实现
+- ✅ 工业广泛应用
+- ✅ 设备兼容性好
+- ✅ 免费开放
+
+---
+
+## 二、Modbus RTU数据帧
+
+### 2.1 帧结构
+
+```
+┌──────────┬─────────┬─────────┬──────────┬────────┬──────────┐
+│  地址    │ 功能码  │  数据   │  CRC16  │        │          │
+│  1字节   │  1字节  │ N字节   │  2字节   │        │          │
+└──────────┴─────────┴─────────┴──────────┴────────┴──────────┘
+   地址码      功能码     数据区      校验码
+```
+
+### 2.2 地址码（1字节）
+
+| 地址 | 说明 |
+|------|------|
+| 0x00 | 广播地址（无响应） |
+| 0x01-0xF7 | 从机地址（1-247） |
+| 0xF8-0xFF | 保留 |
+
+### 2.3 功能码
+
+| 功能码 | 名称 | 操作位数 | 说明 |
+|--------|------|---------|------|
+| 0x01 | Read Coils | 1位 | 读线圈状态 |
+| 0x02 | Read Discrete Inputs | 1位 | 读离散输入 |
+| 0x03 | Read Holding Registers | 16位 | 读保持寄存器 |
+| 0x04 | Read Input Registers | 16位 | 读输入寄存器 |
+| 0x05 | Write Single Coil | 1位 | 写单个线圈 |
+| 0x06 | Write Single Register | 16位 | 写单个寄存器 |
+| 0x0F | Write Multiple Coils | N位 | 写多线圈 |
+| 0x10 | Write Multiple Registers | N*16位 | 写多寄存器 |
+
+### 2.4 CRC16校验算法
+
+```
+过程 计算CRC16(数据列表)
+  设置 全局变量 CRC = 0xFFFF
+  
+  对于 每个 字节 在 数据列表 中
+    设置 全局变量 CRC = 全局变量 CRC XOR 字节
+    
+    对于 i 从 1 到 8
+      如果 全局变量 CRC mod 2 = 1 则
+        设置 全局变量 CRC = 向下取整(全局变量 CRC / 2)
+        设置 全局变量 CRC = 全局变量 CRC XOR 0xA001
+      否则
+        设置 全局变量 CRC = 向下取整(全局变量 CRC / 2)
+      如果结束
+    循环结束
+  循环结束
+  
+  // 返回高低字节
+  设置 全局变量 高字节 = 全局变量 CRC mod 256
+  设置 全局变量 低字节 = 向下取整(全局变量 CRC / 256)
+  
+  返回 [全局变量 低字节, 全局变量 高字节]
+过程结束
+```
+
+---
+
+## 三、常用功能码详解
+
+### 3.1 读保持寄存器（0x03）
+
+**请求帧**：
+```
+从机地址: 0x01
+功能码:   0x03
+起始地址: 0x00 0x00 (高位在前)
+寄存器数: 0x00 0x02 (2个寄存器)
+CRC:      0xC4 0x0B
+```
+
+**响应帧**：
+```
+从机地址: 0x01
+功能码:   0x03
+字节数:   0x04 (4字节=2寄存器)
+数据1:    0x00 0x2B (寄存器1值)
+数据2:    0x00 0x64 (寄存器2值)
+CRC:      0xXXXX
+```
+
+**代码实现**：
+```
+过程 读保持寄存器(从机地址, 起始寄存器, 寄存器数量)
+  设置 全局变量 数据 = [
+    从机地址,
+    0x03,
+    向下取整(起始寄存器 / 256), 起始寄存器 mod 256,  // 起始地址高/低位
+    向下取整(寄存器数量 / 256), 寄存器数量 mod 256    // 数量高/低位
+  ]
+  
+  // 添加CRC
+  设置 全局变量 CRC = 调用 计算CRC16(全局变量 数据)
+  添加项目到列表(全局变量 数据, 获取列表项目(全局变量 CRC, 1))
+  添加项目到列表(全局变量 数据, 获取列表项目(全局变量 CRC, 2))
+  
+  返回 全局变量 数据
+过程结束
+```
+
+### 3.2 写单个寄存器（0x06）
+
+**请求帧**：
+```
+从机地址: 0x01
+功能码:   0x06
+寄存器地址: 0x00 0x01
+寄存器值:  0x00 0x64 (100)
+CRC:      0xXXXX
+```
+
+**响应帧**：
+```
+从机地址: 0x01
+功能码:   0x06
+寄存器地址: 0x00 0x01
+寄存器值:  0x00 0x64
+CRC:      0xXXXX
+```
+
+### 3.3 写多寄存器（0x10）
+
+**请求帧**：
+```
+从机地址: 0x01
+功能码:   0x10
+起始地址: 0x00 0x00
+寄存器数: 0x00 0x02
+字节数:   0x04
+数据1:    0x00 0x01
+数据2:    0x00 0x02
+CRC:      0xXXXX
+```
+
+---
+
+## 四、App Inventor扩展设计
+
+### 4.1 扩展功能
+
+```
+ModbusMaster 扩展属性：
+├── 属性
+│   ├── IP地址/主机 (Host)
+│   ├── 端口 (Port)
+│   ├── 从机地址 (SlaveAddress)
+│   ├── 超时时间 (Timeout)
+│   └── 连接模式 (Mode: RTU/TCP)
+│
+├── 方法
+│   ├── 连接() - 建立连接
+│   ├── 断开() - 关闭连接
+│   ├── 读线圈(地址, 数量) - 0x01
+│   ├── 读离散输入(地址, 数量) - 0x02
+│   ├── 读保持寄存器(地址, 数量) - 0x03
+│   ├── 读输入寄存器(地址, 数量) - 0x04
+│   ├── 写单个线圈(地址, 值) - 0x05
+│   ├── 写单个寄存器(地址, 值) - 0x06
+│   ├── 写多线圈(地址, 值列表) - 0x0F
+│   └── 写多寄存器(地址, 值列表) - 0x10
+│
+└── 事件
+    ├── 连接成功()
+    ├── 连接失败(错误信息)
+    ├── 读取成功(数据)
+    ├── 读取失败(错误信息)
+    ├── 写入成功()
+    └── 写入失败(错误信息)
+```
+
+### 4.2 Java扩展核心代码
+
+```java
+// ModbusMaster.java
+package com.appinventor.ai_modbus;
+
+import com.google.appinventor.components.annotations.*;
+import com.google.appinventor.components.common.*;
+import com.google.appinventor.components.runtime.*;
+import android.util.Log;
+
+@DesignerComponent(
+    version = 1,
+    description = "Modbus RTU/TCP Master Extension",
+    category = ComponentCategory.EXTENSION,
+    nonVisible = true,
+    iconName = "images/extension.png"
+)
+@SimpleObject(external = true)
+public class ModbusMaster extends AndroidNonvisibleComponent {
+    
+    private static final String TAG = "ModbusMaster";
+    
+    // 连接参数
+    private String host;
+    private int port;
+    private int slaveAddress;
+    private int timeout = 3000;
+    private boolean isRTU = false;
+    
+    // Modbus TCP连接
+    private Socket tcpSocket;
+    private DataInputStream tcpInput;
+    private DataOutputStream tcpOutput;
+    
+    // 串口连接
+    private SerialPort serialPort;
+    
+    public ModbusMaster(ComponentContainer container) {
+        super(container.$form());
+    }
+    
+    @SimpleProperty(category = PropertyCategory.BEHAVIOR)
+    public void Host(String host) {
+        this.host = host;
+    }
+    
+    @SimpleProperty
+    public String Host() {
+        return this.host;
+    }
+    
+    @SimpleProperty
+    public void Port(int port) {
+        this.port = port;
+    }
+    
+    @SimpleProperty
+    public int Port() {
+        return this.port;
+    }
+    
+    @SimpleProperty
+    public void SlaveAddress(int address) {
+        this.slaveAddress = address;
+    }
+    
+    @SimpleProperty
+    public int SlaveAddress() {
+        return this.slaveAddress;
+    }
+    
+    @SimpleFunction(description = "Connect to Modbus device")
+    public void Connect() {
+        new Thread(() -> {
+            try {
+                if (!isRTU) {
+                    // TCP连接
+                    tcpSocket = new Socket(host, port);
+                    tcpSocket.setSoTimeout(timeout);
+                    tcpInput = new DataInputStream(tcpSocket.getInputStream());
+                    tcpOutput = new DataOutputStream(tcpSocket.getOutputStream());
+                }
+                form.runOnUiThread(() -> ConnectionSuccess());
+            } catch (Exception e) {
+                Log.e(TAG, "Connection failed", e);
+                form.runOnUiThread(() -> ConnectionFailure(e.getMessage()));
+            }
+        }).start();
+    }
+    
+    @SimpleFunction(description = "Read holding registers (0x03)")
+    public void ReadHoldingRegisters(final int startAddress, final int count) {
+        new Thread(() -> {
+            try {
+                byte[] request = buildReadRequest(0x03, startAddress, count);
+                byte[] response = sendRequest(request);
+                short[] values = parseRegisterResponse(response);
+                form.runOnUiThread(() -> ReadSuccess(values));
+            } catch (Exception e) {
+                form.runOnUiThread(() -> ReadFailure(e.getMessage()));
+            }
+        }).start();
+    }
+    
+    @SimpleFunction(description = "Write single register (0x06)")
+    public void WriteSingleRegister(final int address, final int value) {
+        new Thread(() -> {
+            try {
+                byte[] request = buildWriteSingleRequest(address, value);
+                sendRequest(request);
+                form.runOnUiThread(() -> WriteSuccess());
+            } catch (Exception e) {
+                form.runOnUiThread(() -> WriteFailure(e.getMessage()));
+            }
+        }).start();
+    }
+    
+    private byte[] buildReadRequest(byte functionCode, int address, int count) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(baos);
+        
+        // Modbus TCP Header
+        dos.writeShort(0);        // Transaction ID
+        dos.writeShort(0);       // Protocol ID
+        dos.writeShort(6);       // Length (without header)
+        dos.writeByte(slaveAddress);
+        
+        // Function code
+        dos.writeByte(functionCode);
+        
+        // Address and count
+        dos.writeShort(address);
+        dos.writeShort(count);
+        
+        return baos.toByteArray();
+    }
+    
+    private byte[] buildWriteSingleRequest(int address, int value) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(baos);
+        
+        dos.writeShort(0);
+        dos.writeShort(0);
+        dos.writeShort(6);
+        dos.writeByte(slaveAddress);
+        dos.writeByte(0x06);
+        dos.writeShort(address);
+        dos.writeShort(value);
+        
+        return baos.toByteArray();
+    }
+    
+    private byte[] sendRequest(byte[] request) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        
+        if (isRTU) {
+            serialPort.write(request);
+            Thread.sleep(100);
+            int available;
+            while ((available = serialPort.getInputStream().available()) > 0) {
+                byte[] buffer = new byte[available];
+                serialPort.getInputStream().read(buffer);
+                baos.write(buffer);
+            }
+        } else {
+            tcpOutput.write(request);
+            tcpOutput.flush();
+            
+            // Read response
+            byte[] header = new byte[9];
+            tcpInput.readFully(header);
+            
+            int length = ((header[4] & 0xFF) << 8) | (header[5] & 0xFF);
+            byte[] body = new byte[length - 3]; // exclude unit ID and function code
+            tcpInput.readFully(body);
+            
+            baos.write(header);
+            baos.write(body);
+        }
+        
+        return baos.toByteArray();
+    }
+    
+    private short[] parseRegisterResponse(byte[] response) {
+        int offset = isRTU ? 3 : 9;
+        int byteCount = response[offset + 1] & 0xFF;
+        short[] values = new short[byteCount / 2];
+        
+        for (int i = 0; i < values.length; i++) {
+            int pos = offset + 2 + i * 2;
+            values[i] = (short) (((response[pos] & 0xFF) << 8) | (response[pos + 1] & 0xFF));
+        }
+        
+        return values;
+    }
+    
+    @SimpleFunction(description = "Disconnect from Modbus device")
+    public void Disconnect() {
+        try {
+            if (tcpSocket != null) tcpSocket.close();
+            if (serialPort != null) serialPort.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Disconnect error", e);
+        }
+    }
+    
+    // Events
+    @SimpleEvent
+    public void ConnectionSuccess() {}
+    
+    @SimpleEvent
+    public void ConnectionFailure(String error) {}
+    
+    @SimpleEvent
+    public void ReadSuccess(short[] values) {}
+    
+    @SimpleEvent
+    public void ReadFailure(String error) {}
+    
+    @SimpleEvent
+    public void WriteSuccess() {}
+    
+    @SimpleEvent
+    public void WriteFailure(String error) {}
+}
+```
+
+### 4.3 App Inventor使用示例
+
+```
+当 Screen1.初始化 时
+  设置 ModbusMaster1.Host = "192.168.1.100"
+  设置 ModbusMaster1.Port = 502
+  设置 ModbusMaster1.SlaveAddress = 1
+
+当 Button_Connect.被点击 时
+  调用 ModbusMaster1.连接()
+
+当 ModbusMaster1.连接成功() 时
+  调用 Notifier1.显示消息("Modbus连接成功")
+
+当 ModbusMaster1.连接失败(错误) 时
+  调用 Notifier1.显示消息("连接失败: " + 错误)
+
+当 Button_Read.被点击 时
+  // 读取起始地址0的2个保持寄存器
+  调用 ModbusMaster1.读保持寄存器(起始地址: 0, 数量: 2)
+
+当 ModbusMaster1.读取成功(数据) 时
+  设置 Label_Reg1.文本 = "寄存器1: " + 获取列表项目(数据, 1)
+  设置 Label_Reg2.文本 = "寄存器2: " + 获取列表项目(数据, 2)
+
+当 Button_Write.被点击 时
+  // 写入地址0，值100
+  调用 ModbusMaster1.写单个寄存器(地址: 0, 值: 100)
+
+当 ModbusMaster1.写入成功() 时
+  调用 Notifier1.显示消息("写入成功")
+```
+
+---
+
+## 五、实际应用案例
+
+### 5.1 读取温湿度传感器
+
+```
+// Modbus传感器地址映射
+// 寄存器0: 温度值（÷10得到实际温度）
+// 寄存器1: 湿度值（÷10得到实际湿度）
+
+当 Button_ReadSensor.被点击 时
+  调用 ModbusMaster1.读保持寄存器(起始地址: 0, 数量: 2)
+
+当 ModbusMaster1.读取成功(数据) 时
+  设置 全局变量 温度 = 获取列表项目(数据, 1) / 10
+  设置 全局变量 湿度 = 获取列表项目(数据, 2) / 10
+  
+  设置 Label_Temperature.文本 = "温度: " + 全局变量 温度 + "°C"
+  设置 Label_Humidity.文本 = "湿度: " + 全局变量 湿度 + "%"
+```
+
+### 5.2 控制变频器
+
+```
+当 Slider_Frequency.位置改变 时
+  // 将频率值（0-50Hz）转换为寄存器值（0-500）
+  设置 全局变量 频率值 = Slider_Frequency.值 * 10
+  调用 ModbusMaster1.写单个寄存器(地址: 0, 值: 全局变量 频率值)
+
+当 Slider_Speed.位置改变 时
+  // 速度设置（0-1000 RPM）
+  调用 ModbusMaster1.写单个寄存器(地址: 10, 值: Slider_Speed.值)
+```
+
+---
+
+## 六、常见问题
+
+### 6.1 通信失败
+
+**检查项**：
+- 网络/串口连接
+- 从机地址设置
+- 波特率/校验位
+- 超时设置
+
+### 6.2 数据解析错误
+
+**寄存器字节序**：
+- 大端序：高位在前（常用）
+- 小端序：低位在前
+
+### 6.3 轮询间隔
+
+建议间隔 ≥ 100ms，避免从机处理不过来
+
+---
+
+## 七、扩展下载
+
+[ModbusMaster扩展.aix](https://www.fun123.cn) - 待发布
+
+---
+
+**教程作者**：ai2claw 🐝  
+**创建时间**：2026-03-30  
+**适用版本**：App Inventor 2
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

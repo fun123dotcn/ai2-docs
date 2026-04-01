@@ -1,0 +1,500 @@
+---
+title: App Inventor 2 优质扩展完整教程
+description: 功能：通过FTP协议上传下载文件 适用：文件备份、远程管理等 权限：需要网络和存储权限
+---
+
+
+# App Inventor 2 优质扩展完整教程
+
+---
+
+## 一、AlarmManager扩展（Pura Vida Apps）
+
+### 1.1 功能概述
+
+```
+功能：设置定时任务、闹钟、重复提醒
+特点：即使App关闭也能触发
+权限：需要精确闹钟权限（Android 12+）
+
+下载地址：https://puravidaapps.com/alarmmanager.php
+```
+
+### 1.2 基础使用
+
+```
+当 Screen1.初始化 时
+  调用 AlarmManager1.初始化()
+
+当 Button_设置闹钟.被点击 时
+  // 设置10秒后触发
+  设置 全局变量 触发时间 = 调用 时钟1.获取时间毫秒() + 10000
+  
+  调用 AlarmManager1.设置精确闹钟(
+    触发时间: 全局变量 触发时间,
+    触发意图: "com.example.myapp.MY_ALARM"
+  )
+  
+  调用 Notifier1.显示消息("闹钟已设置，10秒后响铃")
+
+当 AlarmManager1.闹钟触发(请求码) 时
+  调用 Player1.Start()
+  调用 NotificationExtension1.发送通知(
+    标题: "⏰ 闹钟",
+    内容: "时间到！",
+    通知ID: 1
+  )
+```
+
+### 1.3 重复闹钟
+
+```
+当 Button_设置重复.被点击 时
+  // 每天早上8点提醒
+  设置 全局变量 今天8点 = 调用 获取今天8点时间戳()
+  设置 全局变量 触发时间 = 全局变量 今天8点
+  
+  如果 全局变量 触发时间 < 调用 时钟1.获取时间毫秒() 则
+    设置 全局变量 触发时间 = 全局变量 触发时间 + 86400000
+  如果结束
+  
+  调用 AlarmManager1.设置重复闹钟(
+    触发时间: 全局变量 触发时间,
+    间隔毫秒: 86400000,  // 24小时
+    触发意图: "com.example.myapp.DAILY"
+  )
+
+过程 获取今天8点时间戳
+  设置 全局变量 今天 = 调用 时钟1.Now()
+  设置 全局变量 今天日期 = 调用 时钟1.MakeInstantFromParts(
+    调用 时钟1.Year(全局变量 今天),
+    调用 时钟1.Month(全局变量 今天),
+    调用 时钟1.DayOfMonth(全局变量 今天),
+    8, 0, 0  // 早上8点
+  )
+  返回 全局变量 今天日期
+过程结束
+```
+
+---
+
+## 二、FTP扩展（Pura Vida Apps）
+
+### 2.1 功能概述
+
+```
+功能：通过FTP协议上传下载文件
+适用：文件备份、远程管理等
+权限：需要网络和存储权限
+
+下载地址：https://puravidaapps.com/ftp.php
+```
+
+### 2.2 上传文件
+
+```
+初始化全局变量 FTP服务器 = "ftp.example.com"
+初始化全局变量 FTP用户名 = "your_username"
+初始化全局变量 FTP密码 = "your_password"
+
+当 Button_上传.被点击 时
+  调用 Notifier1.显示消息("开始上传...")
+  
+  调用 FTP1.上传文件(
+    服务器: 全局变量 FTP服务器,
+    用户名: 全局变量 FTP用户名,
+    密码: 全局变量 FTP密码,
+    本地文件: "/sdcard/test.jpg",
+    远程路径: "/uploads/test.jpg"
+  )
+
+当 FTP1.上传完成(远程路径) 时
+  调用 Notifier1.显示消息("上传成功！")
+  设置 Label_Status.文本 = "已上传: " + 远程路径
+
+当 FTP1.上传失败(错误) 时
+  调用 Notifier1.显示消息("上传失败: " + 错误)
+```
+
+### 2.3 下载文件
+
+```
+当 Button_下载.被点击 时
+  调用 FTP1.下载文件(
+    服务器: 全局变量 FTP服务器,
+    用户名: 全局变量 FTP用户名,
+    密码: 全局变量 FTP密码,
+    远程路径: "/uploads/data.txt",
+    本地路径: "/sdcard/downloaded_data.txt"
+  )
+
+当 FTP1.下载完成(本地路径) 时
+  调用 Notifier1.显示消息("下载完成！")
+  调用 FileTools1.读取文件(本地路径)
+
+当 FTP1.下载失败(错误) 时
+  调用 Notifier1.显示消息("下载失败: " + 错误)
+```
+
+---
+
+## 三、NotificationListener扩展（Pura Vida Apps）
+
+### 3.1 功能概述
+
+```
+功能：监听设备上的所有通知
+用途：消息提醒、日程同步、自动化
+权限：需要通知访问权限
+
+下载地址：https://puravidaapps.com/notificationlistener.php
+```
+
+### 3.2 基础使用
+
+```
+当 Screen1.初始化 时
+  调用 NotificationListener1.初始化()
+
+当 NotificationListener1.收到通知(包名, 通知标题, 通知内容, 时间戳) 时
+  // 记录所有通知
+  设置 全局变量 通知日志 = 全局变量 通知日志 + 
+    "[" + 调用 时钟1.FormatDateTime(时间戳, "HH:mm") + "] " +
+    通知标题 + ": " + 通知内容 + "\n"
+  
+  设置 ListPicker_通知历史.Elements = 文本分割(全局变量 通知日志, "\n")
+```
+
+### 3.3 过滤特定应用通知
+
+```
+当 NotificationListener1.收到通知(包名, 通知标题, 通知内容, 时间戳) 时
+  // 只处理微信通知
+  如果 包名 = "com.tencent.mm" 则
+    // 提取消息内容
+    设置 全局变量 微信消息 = 通知内容
+    
+    // 保存到TinyDB
+    调用 TinyDB1.存储值(标签: "wechat_" + 时间戳, 值为标签: 全局变量 微信消息)
+    
+    // 语音播报（可选）
+    如果 Switch_语音播报.开 = 真 则
+      调用 TextToSpeech1.朗读("微信消息: " + 全局变量 微信消息)
+    如果结束
+  如果结束
+```
+
+---
+
+## 四、SQLite扩展（Pura Vida Apps）
+
+### 4.1 功能概述
+
+```
+功能：本地SQLite数据库
+优点：比TinyDB更强大，支持SQL查询
+适用：大量数据存储、复杂查询
+
+下载地址：https://puravidaapps.com/sqlite.php
+```
+
+### 4.2 数据库初始化
+
+```
+初始化全局变量 数据库路径 = "/sdcard/mydata.db"
+
+当 Screen1.初始化 时
+  调用 SQLite1.打开数据库(
+    数据库名称: 全局变量 数据库路径,
+    创建如果不存在: 真
+  )
+  
+  // 创建表
+  调用 SQLite1.执行SQL(
+    SQL: "CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT,
+          email TEXT,
+          age INTEGER
+        )"
+  )
+```
+
+### 4.3 增删改查
+
+```
+// 插入数据
+当 Button_注册.被点击 时
+  调用 SQLite1.执行SQL(
+    SQL: "INSERT INTO users (name, email, age) VALUES ('" + 
+          TextBox_姓名.文本 + "', '" +
+          TextBox_邮箱.文本 + "', " +
+          TextBox_年龄.文本 + ")"
+  )
+  
+  调用 Notifier1.显示消息("注册成功！")
+
+// 查询数据
+当 Button_查询.被点击 时
+  调用 SQLite1.执行查询(
+    SQL: "SELECT * FROM users WHERE age > " + TextBox_查询年龄.文本
+  )
+
+当 SQLite1.查询完成(结果列表) 时
+  设置 ListView1.Elements = 结果列表
+  
+// 删除数据
+当 Button_删除.被点击 时
+  调用 SQLite1.执行SQL(
+    SQL: "DELETE FROM users WHERE id = " + TextBox_删除ID.文本
+  )
+```
+
+---
+
+## 五、LocationService扩展（Pura Vida Apps）
+
+### 5.1 功能概述
+
+```
+功能：后台位置追踪
+特点：App关闭也能记录位置
+用途：轨迹记录、位置打卡
+
+下载地址：https://puravidaapps.com/locationservice.php
+```
+
+### 5.2 基础使用
+
+```
+当 Screen1.初始化 时
+  调用 LocationService1.初始化()
+
+当 Button_开始追踪.被点击 时
+  调用 LocationService1.开始追踪(
+    最小距离变化: 10,  // 米
+    最小时间间隔: 30000  // 30秒
+  )
+  
+  调用 Notifier1.显示消息("开始位置追踪")
+
+当 Button_停止追踪.被点击 时
+  调用 LocationService1.停止追踪()
+  调用 Notifier1.显示消息("停止追踪")
+
+当 LocationService1.位置更新(纬度, 经度, 高度, 精度, 地址, 时间戳) 时
+  // 保存到TinyDB
+  设置 全局变量 位置记录 = TinyDB1.获取值(标签: "location_history", 值为标签默认: "[]")
+  设置 全局变量 记录列表 = JSON.文本转列表(全局变量 位置记录)
+  
+  添加项目到列表(全局变量 记录列表, 创建字典(
+    "lat", 纬度,
+    "lon", 经度,
+    "time", 时间戳
+  ))
+  
+  调用 TinyDB1.存储值(
+    标签: "location_history",
+    值为标签: JSON.列表转文本(全局变量 记录列表)
+  )
+```
+
+---
+
+## 六、PackageManager扩展（Pura Vida Apps）
+
+### 6.1 功能概述
+
+```
+功能：获取已安装应用列表
+用途：应用管理、权限检测
+权限：查询应用需要QUERY_ALL_PACKAGES
+
+下载地址：https://puravidaapps.com/packagemanager.php
+```
+
+### 6.2 获取已安装应用
+
+```
+当 Button_获取应用列表.被点击 时
+  调用 PackageManager1.获取已安装应用()
+
+当 PackageManager1.应用列表返回(包名列表, 应用名列表, 图标列表) 时
+  设置 全局变量 已安装应用 = 创建空列表()
+  
+  对于 i 从 1 到 获取列表长度(应用名列表)
+    设置 全局变量 应用名 = 获取列表项目(应用名列表, i)
+    设置 全局变量 包名 = 获取列表项目(包名列表, i)
+    添加项目到列表(全局变量 已安装应用, 全局变量 应用名)
+  循环结束
+  
+  设置 ListPicker_应用列表.Elements = 全局变量 已安装应用
+```
+
+### 6.3 启动指定应用
+
+```
+当 ListPicker_应用列表.AfterPicking() 时
+  设置 全局变量 选中包名 = 获取列表项目(包名列表, ListPicker_应用列表.SelectionIndex)
+  调用 PackageManager1.启动应用(包名: 全局变量 选中包名)
+```
+
+---
+
+## 七、Textbox扩展（Pura Vida Apps）
+
+### 7.1 功能概述
+
+```
+功能：增强文本框功能
+特点：光标控制、文本高亮、实时监听
+权限：无特殊权限
+
+下载地址：https://puravidaapps.com/textbox.php
+```
+
+### 7.2 光标控制
+
+```
+当 Screen1.初始化 时
+  调用 TextBoxExtension1.设置关联文本框(TextBox1)
+
+当 Button_移到末尾.被点击 时
+  // 获取文本长度
+  设置 全局变量 文本长度 = 文本长度(TextBox1.文本)
+  
+  // 设置光标到末尾
+  调用 TextBoxExtension1.设置光标位置(全局变量 文本长度)
+
+当 Button_选中全部.被点击 时
+  调用 TextBoxExtension1.全选()
+
+当 Button_插入文本.被点击 时
+  调用 TextBoxExtension1.在光标处插入("插入的文本")
+```
+
+---
+
+## 八、Tools扩展（Pura Vida Apps）
+
+### 8.1 功能概述
+
+```
+功能：工具集合
+包含：时间戳转换、哈希、编码解码等
+权限：无特殊权限
+
+下载地址：https://puravidaapps.com/tools.php
+```
+
+### 8.2 常用工具
+
+```
+// MD5哈希
+当 Button_MD5.被点击 时
+  设置 全局变量 哈希结果 = 调用 Tools1.MD5(文本框_原文.文本)
+  文本框_MD5.文本 = 全局变量 哈希结果
+
+// Base64编码
+当 Button_编码.被点击 时
+  设置 全局变量 编码结果 = 调用 Tools1.Base64Encode(文本框_原文.文本)
+  文本框_结果.文本 = 全局变量 编码结果
+
+// Base64解码
+当 Button_解码.被点击 时
+  设置 全局变量 解码结果 = 调用 Tools1.Base64Decode(文本框_编码.文本)
+  文本框_结果.文本 = 全局变量 解码结果
+
+// 时间戳转换
+当 Button_时间戳转日期.被点击 时
+  设置 全局变量 日期 = 调用 Tools1.TimeIntervalToDate(文本转数字(文本框_时间戳.文本))
+  文本框_日期.文本 = 调用 时钟1.FormatDateTime(全局变量 日期, "yyyy-MM-dd HH:mm:ss")
+
+当 Button_日期转时间戳.被点击 时
+  设置 全局变量 时间戳 = 调用 Tools1.DateToTimeInterval(文本框_日期.文本)
+  文本框_时间戳.文本 = 全局变量 时间戳
+```
+
+---
+
+## 九、扩展使用注意事项
+
+### 9.1 安装前检查
+
+```
+1. 确认来源可靠
+   - MIT官方扩展
+   - 知名开发者（Taifun、Pura Vida）
+   - GitHub开源项目
+
+2. 查看权限要求
+   - 拒绝权限过大的扩展
+   - 评估风险
+
+3. 检查兼容性
+   - 查看支持的AI2版本
+   - 查看支持的Android版本
+```
+
+### 9.2 使用最佳实践
+
+```
+1. 先测试再使用
+   创建测试项目验证扩展功能
+
+2. 处理错误
+   始终处理可能的错误情况
+
+3. 申请必要权限
+   在使用前申请所需权限
+
+4. 更新到最新版本
+   关注开发者更新
+
+5. 备份项目
+   扩展可能带来不稳定性
+```
+
+---
+
+## 十、扩展下载地址汇总
+
+| 扩展 | 开发者 | 下载地址 |
+|------|--------|---------|
+| AlarmManager | Pura Vida | puravidaapps.com/alarmmanager.php |
+| FTP | Pura Vida | puravidaapps.com/ftp.php |
+| NotificationListener | Pura Vida | puravidaapps.com/notificationlistener.php |
+| SQLite | Pura Vida | puravidaapps.com/sqlite.php |
+| LocationService | Pura Vida | puravidaapps.com/locationservice.php |
+| PackageManager | Pura Vida | puravidaapps.com/packagemanager.php |
+| Textbox | Pura Vida | puravidaapps.com/textbox.php |
+| Tools | Pura Vida | puravidaapps.com/tools.php |
+| BluetoothLE | MIT官方 | mit-cml.github.io/extensions |
+| Posenet | MIT官方 | mit-cml.github.io/extensions |
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-31
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [AlarmManager Extension](https://puravidaapps.com/alarmmanager.php) - Pura Vida Apps by Taifun
+- [FTP Extension](https://puravidaapps.com/ftp.php) - Pura Vida Apps by Taifun
+- [Notification Listener Extension](https://puravidaapps.com/notificationlistener.php) - Pura Vida Apps by Taifun
+- [SQLite Extension](https://puravidaapps.com/sqlite.php) - Pura Vida Apps by Taifun
+- [Location Service Extension](https://puravidaapps.com/locationservice.php) - Pura Vida Apps by Taifun
+- [Package Manager Extension](https://puravidaapps.com/packagemanager.php) - Pura Vida Apps by Taifun
+- [Textbox Extension](https://puravidaapps.com/textbox.php) - Pura Vida Apps by Taifun
+- [Tools Extension](https://puravidaapps.com/tools.php) - Pura Vida Apps by Taifun
+- [MIT App Inventor Extensions](https://mit-cml.github.io/extensions/) - MIT App Inventor
+
+### 版权声明
+本文档基于以下资源整理翻译，版权归原作者所有：
+- Pura Vida Apps 所有扩展版权归 **Taifun**（puravidaapps.com）所有
+- MIT App Inventor 官方扩展采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- 使用扩展请遵守各扩展的许可协议
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

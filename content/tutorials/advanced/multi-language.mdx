@@ -1,0 +1,204 @@
+---
+title: App Inventor 2 国际化多语言教程
+description: "覆盖：语言切换、国际化、动态翻译、多语言资源"
+---
+
+
+# App Inventor 2 国际化多语言教程
+
+> 覆盖：语言切换、国际化、动态翻译、多语言资源
+
+---
+
+## 一、国际化方案
+
+### 1.1 方案对比
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| **JSON配置** | 简单、灵活 | 需手动管理 |
+| **CSV文件** | 易于翻译 | 格式单一 |
+| **扩展组件** | 功能强大 | 依赖扩展 |
+
+**推荐**：JSON配置方案
+
+---
+
+## 二、JSON多语言方案
+
+### 2.1 语言配置文件
+
+```
+// zh_CN.json
+{
+  "app_name": "我的App",
+  "welcome": "欢迎使用",
+  "login": "登录",
+  "register": "注册",
+  "username": "用户名",
+  "password": "密码",
+  "submit": "提交",
+  "cancel": "取消",
+  "confirm": "确认",
+  "error": "错误",
+  "success": "成功",
+  "loading": "加载中..."
+}
+
+// en_US.json
+{
+  "app_name": "My App",
+  "welcome": "Welcome",
+  "login": "Login",
+  "register": "Register",
+  "username": "Username",
+  "password": "Password",
+  "submit": "Submit",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "error": "Error",
+  "success": "Success",
+  "loading": "Loading..."
+}
+```
+
+### 2.2 加载语言包
+
+```
+初始化全局变量 当前语言 = "zh_CN"
+初始化全局变量 语言包 = 创建字典()
+
+定义 加载语言包(语言代码)
+  设置 全局变量 当前语言 = 语言代码
+  
+  如果 语言代码 = "zh_CN" 则
+    设置 全局变量 语言包 = 创建字典(
+      键值对("app_name", "我的App"),
+      键值对("welcome", "欢迎使用"),
+      键值对("login", "登录"),
+      键值对("register", "注册"),
+      键值对("username", "用户名"),
+      键值对("password", "密码"),
+      键值对("submit", "提交"),
+      键值对("cancel", "取消"),
+      键值对("confirm", "确认"),
+      键值对("error", "错误"),
+      键值对("success", "成功"),
+      键值对("loading", "加载中...")
+    )
+  否则
+    设置 全局变量 语言包 = 创建字典(
+     键值对("app_name", "My App"),
+     键值对("welcome", "Welcome"),
+     键值对("login", "Login"),
+     键值对("register", "Register"),
+      键值对("username", "Username"),
+      键值对("password", "Password"),
+     键值对("submit", "Submit"),
+      键值对("cancel", "Cancel"),
+      键值对("confirm", "Confirm"),
+     键值对("error", "Error"),
+      键值对("success", "Success"),
+      键值对("loading", "Loading...")
+    )
+
+定义 翻译(键)
+  返回 获取键的值(全局变量 语言包, 键, 键)
+```
+
+### 2.3 应用翻译
+
+```
+定义 刷新界面翻译()
+  设置 标签_欢迎.文本 = 翻译("welcome")
+  设置 按钮_登录.文本 = 翻译("login")
+  设置 按钮_注册.文本 = 翻译("register")
+  设置 标签_用户名.文本 = 翻译("username")
+  设置 标签_密码.文本 = 翻译("password")
+  设置 按钮_提交.文本 = 翻译("submit")
+```
+
+---
+
+## 三、语言切换功能
+
+### 3.1 切换按钮
+
+```
+当 按钮_切换语言.被点击 时
+  如果 全局变量 当前语言 = "zh_CN" 则
+    调用 加载语言包("en_US")
+  否则
+    调用 加载语言包("zh_CN")
+  
+  调用 刷新界面翻译()
+  调用 保存语言设置(全局变量 当前语言)
+```
+
+### 3.2 保存设置
+
+```
+定义 保存语言设置(语言代码)
+  调用 TinyDB1.存储值("language", 语言代码)
+
+定义 加载语言设置()
+  初始化局部变量 保存的语言 = 调用 TinyDB1.获取值("language", "zh_CN")
+  调用 加载语言包(保存的语言)
+```
+
+---
+
+## 四、进阶：动态翻译
+
+### 4.1 实时翻译（调用API）
+
+```
+定义 在线翻译(文本, 目标语言)
+  // 使用百度翻译API
+  设置 Web客户端1.URL = "https://fanyi-api.baidu.com/api/trans/vip/translate"
+  调用 Web客户端1.发送POST文本(
+    "q=" + 文本 + "&from=auto&to=" + 目标语言 + "&appid=你的AppID&salt=随机数&sign=签名"
+  )
+
+当 Web客户端1.获得文本 时（URL, 响应码, 响应类型, 响应内容）
+  初始化局部变量 结果 = 调用 字典.JSON转字典(响应内容)
+  初始化局部变量 译文 = 获取键路径的值(结果, ["trans_result", 0, "dst"], "")
+  设置 标签_翻译结果.文本 = 译文
+```
+
+---
+
+## 五、常见问题
+
+### Q1：语言包太大？
+
+按模块拆分，按需加载
+
+### Q2：翻译不完整？
+
+提供默认语言作为fallback
+
+### Q3：字体显示？
+
+确保设备支持目标语言字体
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

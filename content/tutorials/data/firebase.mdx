@@ -1,0 +1,255 @@
+---
+title: App Inventor 2 Firebase实时数据库教程
+description: "覆盖：Firebase配置、实时数据同步、在线状态、实时聊天"
+---
+
+
+# App Inventor 2 Firebase实时数据库教程
+
+> 覆盖：Firebase配置、实时数据同步、在线状态、实时聊天
+
+---
+
+## 一、Firebase配置
+
+### 1.1 创建项目
+
+1. 访问 https://console.firebase.google.com
+2. 创建新项目
+3. 添加Android应用
+4. 下载 google-services.json
+
+### 1.2 启用服务
+
+- 实时数据库（Realtime Database）
+-  Firestore（可选）
+-  身份验证（Authentication）
+-  Cloud Messaging（推送）
+
+---
+
+## 二、实时数据库
+
+### 2.1 初始化
+
+```
+当 Screen1.初始化 时
+  调用 FirebaseDB1.初始化(
+    "你的Firebase项目URL",
+    "你的API密钥"
+  )
+```
+
+### 2.2 写入数据
+
+```
+定义 保存用户信息(用户ID, 用户名, 邮箱)
+  调用 FirebaseDB1.存储值(
+    "users/" + 用户ID + "/username",
+    用户名
+  )
+  调用 FirebaseDB1.存储值(
+    "users/" + 用户ID + "/email",
+    邮箱
+  )
+  调用 FirebaseDB1.存储值(
+    "users/" + 用户ID + "/online",
+    真
+  )
+
+当 FirebaseDB1.存储完成 时（标签）
+  设置 标签_状态.文本 = "保存成功"
+```
+
+### 2.3 读取数据
+
+```
+定义 读取用户信息(用户ID)
+  调用 FirebaseDB1.获取值("users/" + 用户ID)
+
+当 FirebaseDB1.获取完成 时（标签, 值）
+  如果 值 ≠ "" 则
+    初始化局部变量 数据 = 调用 字典.JSON转字典(值)
+    设置 标签_用户名.文本 = 获取键的值(数据, "username", "")
+    设置 标签_邮箱.文本 = 获取键的值(数据, "email", "")
+```
+
+---
+
+## 三、实时监听
+
+### 3.1 监听数据变化
+
+```
+当 Screen1.初始化 时
+  // 监听用户在线状态
+  调用 FirebaseDB1.监听值("users/online")
+
+当 FirebaseDB1.数据改变 时（标签, 值）
+  初始化局部变量 列表 = 调用 字典.JSON转字典(值)
+  设置 标签_在线数.文本 = "在线: " + 列表长度(列表)
+```
+
+### 3.2 监听列表
+
+```
+当 Screen1.初始化 时
+  调用 FirebaseDB1.监听列表("messages/")
+
+当 FirebaseDB1.列表改变 时（标签, 值列表）
+  设置 全局变量 消息列表 = 值列表
+  设置 列表显示框1.适配器 = 全局变量 消息列表
+```
+
+---
+
+## 四、在线状态
+
+### 4.1 用户上线/下线
+
+```
+当 Screen1.初始化 时
+  初始化局部变量 用户ID = 获取键的值(获取键的值(全局变量 登录信息, "user", {}), "id", "")
+  
+  // 标记上线
+  调用 FirebaseDB1.存储值(
+    "presence/" + 用户ID,
+    创建字典(
+      键值对("online", 真),
+      键值对("lastSeen", 获取毫秒数(现在))
+    )
+  )
+
+当 Screen1.销毁 时
+  初始化局部变量 用户ID = 获取键的值(获取键的值(全局变量 登录信息, "user", {}), "id", "")
+  
+  // 标记下线
+  调用 FirebaseDB1.存储值(
+    "presence/" + 用户ID,
+    创建字典(
+      键值对("online", 假),
+      键值对("lastSeen", 获取毫秒数(现在))
+    )
+  )
+```
+
+---
+
+## 五、实时聊天
+
+### 5.1 发送消息
+
+```
+定义 发送消息(发送者, 内容)
+  初始化局部变量 消息ID = 获取毫秒数(现在)
+  
+  调用 FirebaseDB1.存储值(
+    "messages/" + 消息ID,
+    创建字典(
+      键值对("sender", 发送者),
+      键值对("content", 内容),
+      键值对("timestamp", 消息ID),
+      键值对("type", "text")
+    )
+  )
+
+当 按钮_发送.被点击 时
+  初始化局部变量 内容 = 文本输入框_消息.文本
+  初始化局部变量 发送者 = 获取键的值(获取键的值(全局变量 登录信息, "user", {}), "username", "匿名")
+  
+  如果 内容 ≠ "" 则
+    调用 发送消息(发送者, 内容)
+    设置 文本输入框_消息.文本 = ""
+```
+
+### 5.2 接收消息
+
+```
+当 FirebaseDB1.列表改变 时（标签, 值列表）
+  如果 在文本中查找(标签, "messages") >= 0 则
+    设置 全局变量 消息列表 = 值列表
+    
+    // 按时间排序
+    设置 列表显示框1.适配器 = 全局变量 消息列表
+
+当 列表显示框1.选择完成 时（选择项）
+  初始化局部变量 内容 = 获取键的值(选择项, "content", "")
+  初始化局部变量 发送者 = 获取键的值(选择项, "sender", "")
+  
+  调用 对话框1.显示消息对话框(
+    内容,
+    "来自: " + 发送者,
+    "确定"
+  )
+```
+
+---
+
+## 六、未读消息
+
+### 6.1 标记已读
+
+```
+定义 标记已读(消息ID, 用户ID)
+  调用 FirebaseDB1.存储值(
+    "messages/" + 消息ID + "/read/" + 用户ID,
+    真
+  )
+
+定义 获取未读数(当前用户ID)
+  调用 FirebaseDB1.监听列表("messages/")
+
+当 FirebaseDB1.列表改变 时（标签, 值列表）
+  初始化局部变量 未读数 = 0
+  
+  对于 每条消息 在 值列表 中
+    初始化局部变量 已读列表 = 获取键的值(消息, "read", {})
+    如果 获取键的值(已读列表, 当前用户ID, 假) = 假 则
+      设置 未读数 = 未读数 + 1
+  
+  设置 标签_未读.文本 = "未读: " + 未读数
+```
+
+---
+
+## 七、常见问题
+
+### Q1：权限规则？
+
+在Firebase控制台设置.read和.write规则
+
+### Q2：数据量大？
+
+使用分页加载
+
+### Q3：离线支持？
+
+Firebase自动支持离线
+
+---
+
+## 参考资料
+
+- [Firebase文档](https://firebase.google.com/docs)
+- [Firebase控制台](https://console.firebase.google.com)
+
+---
+
+*文档版本：2026.03 | 作者：App Inventor 2 中文网 www.fun123.cn*
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

@@ -1,0 +1,167 @@
+---
+title: App Inventor 2 动态创建扩展文档
+description: MyExtension/ ├── src/ │   └── com/example/myextension/ │       └── MyExtension.java ├── res/ │   └── images/ │      …
+---
+
+
+# App Inventor 2 动态创建扩展文档
+
+---
+
+## 一、动态创建组件
+
+### 1.1 支持动态创建的组件
+
+| 组件类型 | 支持 | 说明 |
+|---------|------|------|
+| Label | ✅ | 文本标签 |
+| Button | ✅ | 按钮 |
+| TextBox | ✅ | 文本框 |
+| Image | ✅ | 图片 |
+| HorizontalArrangement | ✅ | 水平布局 |
+| VerticalArrangement | ✅ | 垂直布局 |
+| Canvas | ✅ | 画布 |
+| ImageSprite | ✅ | 图像精灵 |
+
+### 1.2 动态创建Label
+
+```
+过程 创建标签(父容器, 文本内容, 字体大小, 文字颜色)
+  设置 全局变量 新标签 = 调用 Label.创建组件(父容器)
+  调用 全局变量 新标签.设置属性("文本", 文本内容)
+  调用 全局变量 新标签.设置属性("字体大小", 字体大小)
+  调用 全局变量 新标签.设置属性("文字颜色", 文字颜色)
+  调用 全局变量 新标签.设置属性("宽度", "充满")
+  返回 全局变量 新标签
+过程结束
+```
+
+### 1.3 动态创建按钮并绑定事件
+
+```
+初始化全局变量 按钮列表 = []
+初始化全局变量 按钮数据 = []
+
+过程 创建动态按钮列表(数据列表)
+  // 清空现有按钮
+  对于 每个 按钮 在 全局变量 按钮列表 中
+    调用 按钮.删除组件()
+  循环结束
+  设置 全局变量 按钮列表 = 创建空列表()
+  设置 全局变量 按钮数据 = 数据列表
+  
+  // 创建新按钮
+  对于 每个 数据 在 数据列表 中
+    设置 全局变量 按钮 = 调用 Button.创建组件(VerticalArrangement1)
+    调用 全局变量 按钮.设置属性("文本", 获取键的值(数据, "label", ""))
+    调用 全局变量 按钮.设置属性("宽度", "充满")
+    调用 全局变量 按钮.设置属性("高度", "50")
+    调用 全局变量 按钮.注册点击事件(动态按钮被点击)
+    添加项目到列表(全局变量 按钮列表, 全局变量 按钮)
+  循环结束
+过程结束
+
+过程 动态按钮被点击(组件)
+  // 找到对应数据
+  设置 全局变量 索引 = 获取列表位置(全局变量 按钮列表, 组件)
+  如果 全局变量 索引 > 0 则
+    设置 全局变量 数据 = 获取列表项目(全局变量 按钮数据, 全局变量 索引)
+    设置 全局变量 操作 = 获取键的值(全局变量 数据, "action", "")
+    调用 执行操作(全局变量 操作)
+  如果结束
+过程结束
+```
+
+---
+
+## 二、扩展开发规范
+
+### 2.1 扩展目录结构
+
+```
+MyExtension/
+├── src/
+│   └── com/example/myextension/
+│       └── MyExtension.java
+├── res/
+│   └── images/
+│       └── extension.png
+├── build.xml
+└── README.md
+```
+
+### 2.2 扩展注解说明
+
+```java
+@DesignerComponent(
+    version = 1,                    // 版本号
+    description = "扩展描述",       // 描述
+    category = ComponentCategory.EXTENSION,
+    nonVisible = true,              // 是否不可见
+    iconName = "images/icon.png"    // 图标
+)
+@SimpleObject(external = true)
+public class MyExtension extends AndroidNonvisibleComponent {
+    
+    // 属性
+    @SimpleProperty(category = PropertyCategory.BEHAVIOR)
+    public void MyProperty(String value) { ... }
+    
+    @SimpleProperty
+    public String MyProperty() { ... }
+    
+    // 方法
+    @SimpleFunction(description = "方法描述")
+    public void MyMethod(String param) { ... }
+    
+    // 事件
+    @SimpleEvent(description = "事件描述")
+    public void MyEvent(String data) {
+        EventDispatcher.dispatchEvent(this, "MyEvent", data);
+    }
+}
+```
+
+### 2.3 异步操作规范
+
+```java
+@SimpleFunction
+public void AsyncOperation(final String input) {
+    new Thread(() -> {
+        try {
+            // 耗时操作
+            String result = doHeavyWork(input);
+            
+            // 回到主线程触发事件
+            form.runOnUiThread(() -> {
+                OperationComplete(result);
+            });
+        } catch (Exception e) {
+            form.runOnUiThread(() -> {
+                OperationFailed(e.getMessage());
+            });
+        }
+    }).start();
+}
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

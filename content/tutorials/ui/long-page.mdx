@@ -1,0 +1,160 @@
+---
+title: "App Inventor 2 长页面/滚动布局教程"
+description: "界面设计： Screen1 └── VerticalScrollArrangement1 ├── 宽度: 充满 ├── 高度: 充满 └── 内容组件（可超出屏幕高度）"
+---
+
+
+# App Inventor 2 长页面/滚动布局教程
+
+---
+
+## 一、滚动布局组件
+
+| 组件 | 说明 | 适用场景 |
+|------|------|---------|
+| VerticalScrollArrangement | 垂直滚动 | 长列表、文章 |
+| HorizontalScrollArrangement | 水平滚动 | 横向菜单、图片 |
+| ListView | 列表视图 | 数据列表 |
+| WebViewer | 网页视图 | 富文本内容 |
+
+---
+
+## 二、垂直滚动布局
+
+### 2.1 基础配置
+
+```
+界面设计：
+Screen1
+└── VerticalScrollArrangement1
+    ├── 宽度: 充满
+    ├── 高度: 充满
+    └── 内容组件（可超出屏幕高度）
+```
+
+### 2.2 动态添加内容
+
+```
+初始化全局变量 内容列表 = []
+
+当 Screen1.初始化 时
+  // 加载数据
+  对于 i 从 1 到 50
+    添加项目到列表(全局变量 内容列表, "第" + i + "条内容")
+  循环结束
+  
+  调用 渲染内容列表()
+
+过程 渲染内容列表
+  对于 每个 内容 在 全局变量 内容列表 中
+    // 创建内容行
+    设置 全局变量 行 = 调用 HorizontalArrangement.创建组件(VerticalScrollArrangement1)
+    调用 全局变量 行.设置属性("宽度", "充满")
+    调用 全局变量 行.设置属性("高度", "60")
+    
+    // 创建文本标签
+    设置 全局变量 标签 = 调用 Label.创建组件(全局变量 行)
+    调用 全局变量 标签.设置属性("文本", 内容)
+    调用 全局变量 标签.设置属性("宽度", "充满")
+    
+    // 分隔线
+    设置 全局变量 分隔线 = 调用 Label.创建组件(VerticalScrollArrangement1)
+    调用 全局变量 分隔线.设置属性("高度", "1")
+    调用 全局变量 分隔线.设置属性("宽度", "充满")
+    调用 全局变量 分隔线.设置属性("背景颜色", 浅灰色)
+  循环结束
+过程结束
+```
+
+---
+
+## 三、滚动到指定位置
+
+```
+当 Button_ScrollToTop.被点击 时
+  调用 VerticalScrollArrangement1.滚动到顶部()
+
+当 Button_ScrollToBottom.被点击 时
+  调用 VerticalScrollArrangement1.滚动到底部()
+
+当 Button_ScrollToPosition.被点击 时
+  // 滚动到指定Y位置（像素）
+  调用 VerticalScrollArrangement1.滚动到(Y: 500)
+```
+
+---
+
+## 四、下拉刷新
+
+```
+初始化全局变量 刷新中 = 假
+初始化全局变量 初始Y = 0
+
+当 Canvas1.触摸开始(X, Y) 时
+  设置 全局变量 初始Y = Y
+
+当 Canvas1.被拖动(起始X, 起始Y, 当前X, 当前Y, 原件) 时
+  如果 当前Y - 全局变量 初始Y > 80 且 全局变量 刷新中 = 假 则
+    设置 全局变量 刷新中 = 真
+    设置 Label_Refresh.文本 = "正在刷新..."
+    调用 加载数据()
+  如果结束
+
+过程 加载数据
+  // 模拟网络请求
+  调用 Web1.发送文本请求(网址: "http://api.example.com/data")
+
+当 Web1.收到文本响应(响应文本) 时
+  设置 全局变量 刷新中 = 假
+  设置 Label_Refresh.文本 = ""
+  调用 更新内容(响应文本)
+过程结束
+```
+
+---
+
+## 五、无限滚动（分页加载）
+
+```
+初始化全局变量 当前页 = 1
+初始化全局变量 加载中 = 假
+初始化全局变量 每页数量 = 20
+
+当 VerticalScrollArrangement1.滚动到底部() 时
+  如果 全局变量 加载中 = 假 则
+    设置 全局变量 加载中 = 真
+    设置 全局变量 当前页 = 全局变量 当前页 + 1
+    调用 加载更多数据(全局变量 当前页)
+  如果结束
+
+过程 加载更多数据(页码)
+  调用 Web1.发送文本请求(
+    网址: "http://api.example.com/data?page=" + 页码 + "&size=" + 全局变量 每页数量
+  )
+
+当 Web1.收到文本响应(响应文本) 时
+  设置 全局变量 加载中 = 假
+  调用 追加内容(响应文本)
+过程结束
+```
+
+---
+
+**教程作者**：ai2claw 🐝 | **创建时间**：2026-03-30
+
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- [MIT App Inventor 官方文档](https://appinventor.mit.edu/reference/) - MIT App Inventor
+- [MIT App Inventor Community](https://community.appinventor.mit.edu/) - MIT App Inventor Community
+- [MIT App Inventor GitHub](https://github.com/mit-cml/appinventor-sources) - MIT CML
+
+### 版权声明
+本文档基于 MIT App Inventor 官方文档及社区资源整理，版权归原作者所有：
+- MIT App Inventor 官方文档采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 授权
+- MIT App Inventor Community 帖子版权归原作者所有
+
+本文档由 ai2claw 🐝 整理，仅供学习参考，如有侵权请联系删除。

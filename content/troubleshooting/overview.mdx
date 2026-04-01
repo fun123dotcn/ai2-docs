@@ -1,0 +1,194 @@
+---
+title: 常见问题
+description: App Inventor 2 使用中的常见问题和解决方案
+---
+
+# 常见问题与解决方案
+
+<ExtendedDescription>
+  在使用 App Inventor 2 的过程中，您可能会遇到各种问题。本页面收集了最常见的问题及其解决方案，帮助您快速解决问题。
+</ExtendedDescription>
+
+## 编译与构建问题
+
+<AccordionGroup>
+  <Accordion title="构建超时 (Build Timeout)" defaultOpen>
+    **错误信息**：`Build service is not responding. Please try again later.`
+
+    **解决方案**：
+    1. 等待30秒后重新点击 Build
+    2. 检查网络连接
+    3. 避开高峰期（美国晚间）
+    4. 尝试清理浏览器缓存
+    5. 减少项目组件数量，拆分大型 Screen
+  </Accordion>
+
+  <Accordion title="DX Execution Failed" icon="alert-triangle">
+    **错误信息**：`DexException: DX cannot accept input with type: null`
+
+    **解决方案**：
+    1. 检查扩展数量，删除不必要的扩展
+    2. 清理未使用的资源文件
+    3. 确保扩展来自可靠来源
+    4. 更新到最新版本的扩展
+    5. 尝试删除所有扩展后逐个添加测试
+  </Accordion>
+
+  <Accordion title="Unable to Build APK" icon="alert-circle">
+    **错误信息**：`Unable to build APK in MIT App Inventor`
+
+    **解决方案**：
+    1. 清除浏览器缓存（Ctrl+Shift+Delete）
+    2. 导出检查 aia 文件是否完整
+    3. 使用浏览器隐身模式登录
+    4. 尝试其他浏览器
+    5. 检查项目 Checkpoints，恢复到正常版本
+  </Accordion>
+</AccordionGroup>
+
+## 运行时错误
+
+<AccordionGroup>
+  <Accordion title="Matrix Error: Invalid dimension size: 0" icon="grid">
+    **错误信息**：`Error: Invalid dimension size: 0`
+
+    **原因**：尝试创建 0×0 的矩阵，或列表为空时转换为矩阵
+
+    **解决方案**：
+    ```blocks
+    当 Button.点击 时
+      如果 获取列表长度(数据) = 0 则
+        调用 Notifier1.显示消息框("数据不能为空")
+      否则
+        调用 Matrix1.从列表创建(数据)
+      如果结束
+    ```
+  </Accordion>
+
+  <Accordion title="Runtime Error: null reference" icon="alert-triangle">
+    **错误信息**：`Attempt to invoke method on null object reference`
+
+    **原因**：
+    - 组件未初始化就使用
+    - 对象为空时调用方法
+    - Screen 间传递数据问题
+
+    **解决方案**：
+    ```blocks
+    // 使用前检查空值
+    设置 Label1.文本 = 如果(数据 = 空, "无数据", 数据)
+    ```
+  </Accordion>
+
+  <Accordion title="App Crashes on Start" icon="x-circle">
+    **原因**：
+    - Screen 名称包含特殊字符
+    - 组件 ID 冲突
+    - 扩展初始化失败
+    - 权限问题
+
+    **解决方案**：
+    1. 检查 Screen 名称（只能包含字母、数字、下划线）
+    2. 确保没有重复的组件名称
+    3. 更新或删除可疑扩展
+    4. 使用 adb logcat 查看错误日志
+  </Accordion>
+</AccordionGroup>
+
+## 连接问题
+
+<AccordionGroup>
+  <Accordion title="Companion 连接断开" icon="wifi-off">
+    **错误信息**：`Connection with companion lost`
+
+    **解决方案**：
+    1. 设置 → 开发者选项 → 保持唤醒
+    2. 设置 → 显示 → 休眠 → 永不
+    3. App Inventor → Connect → Reset Connection
+    4. 使用 USB 线连接代替 WiFi
+    5. 更新 MIT AI2 Companion 应用
+  </Accordion>
+
+  <Accordion title="USB 文件访问错误" icon="usb">
+    **错误信息**：`Error 0x800710D2 accessing via USB cable`
+
+    **解决方案**：
+    1. 重启 ADB 服务：`adb kill-server && adb start-server`
+    2. 重新安装 USB 驱动
+    3. 更换 USB 线（建议使用数据传输线）
+    4. 检查手机是否开启了 USB 调试
+  </Accordion>
+</AccordionGroup>
+
+## 扩展问题
+
+<AccordionGroup>
+  <Accordion title="No Such Class Error" icon="puzzle" defaultOpen>
+    **错误信息**：`Error: no such class: com.example.extension`
+
+    **最有效的解决方法**：
+    1. **重启 Companion**：完全关闭 AI2 Companion，从最近任务中滑出，重新打开
+    2. **重新导入扩展**：删除项目中的扩展，重新下载并导入
+    3. **在 Screen1 添加扩展**：确保在 Screen1 中也有该扩展实例
+    4. **构建 APK 测试**：Companion 环境的问题，构建 APK 后通常能解决
+  </Accordion>
+
+  <Accordion title="扩展冲突" icon="git-merge">
+    **错误信息**：`DexException: DX execution failed`
+
+    **解决方案**：
+    1. 备份项目
+    2. 移除所有扩展
+    3. 逐个添加扩展测试
+    4. 找出冲突的扩展组合
+    5. 减少扩展数量，优先使用内置组件
+  </Accordion>
+
+  <Accordion title="方法找不到" icon="search">
+    **错误信息**：`Extension method not found`
+
+    **检查项**：
+    1. 方法名称大小写是否正确（如 `getData` 而非 `GETDATA`）
+    2. 参数数量是否匹配
+    3. 扩展版本是否最新
+    4. 组件名称是否正确
+  </Accordion>
+</AccordionGroup>
+
+## 权限问题
+
+<AccordionGroup>
+  <Accordion title="Android 12+ 蓝牙权限" icon="bluetooth">
+    **问题**：Android 12+ 需要新的蓝牙权限
+
+    **解决代码**：
+    ```blocks
+    当 Screen1.初始化 时
+      调用 BluetoothLE1.申请权限()
+    ```
+  </Accordion>
+
+  <Accordion title="Android 13+ 通知权限" icon="bell">
+    **问题**：Android 13+ 需要通知权限
+
+    **解决代码**：
+    ```blocks
+    当 Screen1.初始化 时
+      调用 权限扩展1.申请权限(["android.permission.POST_NOTIFICATIONS"])
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## 搜索更多答案
+
+<Card title="MIT App Inventor 社区" icon="message-circle" href="https://community.appinventor.mit.edu">
+  在官方社区搜索和提问，获得来自全球开发者的帮助
+</Card>
+
+<Card title="GitHub Issues" icon="github" href="https://github.com/mit-cml/appinventor-sources/issues">
+  搜索已知的 Bug 和问题，或提交新的 Issue
+</Card>
+
+<Callout type="tip">
+  在搜索时使用关键词如 "Error: [具体错误]" 或 "component name + error" 可以更快找到答案！
+</Callout>
