@@ -1,238 +1,363 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
+  "name": "App Inventor 2 课题AI研究",
   "theme": "mint",
-  "name": "App Inventor 2 中文文档",
-  "colors": {
-    "primary": "#3b82f6",
-    "light": "#60a5fa",
-    "dark": "#2563eb"
+  "logo": {
+    "light": "/logo.png",
+    "dark": "/logo.png",
+    "href": "https://www.fun123.cn"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.ico",
   "navigation": {
     "tabs": [
       {
-        "tab": "文档",
+        "tab": "📚 文档中心",
         "groups": [
           {
             "group": "快速开始",
             "pages": [
-              "content/getting-started/introduction"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "教程",
-        "groups": [
-          {
-            "group": "入门基础",
-            "pages": [
-              "content/tutorials/getting-started/countdown",
-              "content/tutorials/getting-started/login-register-beginner",
-              "content/tutorials/getting-started/login-register",
-              "content/tutorials/getting-started/multi-screen",
-              "content/tutorials/getting-started/screen-adaptation",
-              "content/tutorials/getting-started/screen-variable",
-              "content/tutorials/getting-started/architecture",
-              "content/tutorials/getting-started/publish"
+              {
+                "group": "屏幕与多页面",
+                "pages": [
+                  "content/tutorials/getting-started/login-register",
+                  "content/tutorials/getting-started/login-register-beginner",
+                  "content/tutorials/getting-started/multi-screen",
+                  "content/tutorials/getting-started/screen-adaptation",
+                  "content/tutorials/getting-started/screen-variable"
+                ]
+              }
             ]
           },
           {
             "group": "界面设计",
             "pages": [
-              "content/tutorials/ui/dynamic-layout",
-              "content/tutorials/ui/listview",
-              "content/tutorials/ui/listview-custom",
-              "content/tutorials/ui/navigation",
-              "content/tutorials/ui/long-page",
-              "content/tutorials/ui/scroll-layout",
-              "content/tutorials/ui/animation",
-              "content/tutorials/ui/drag-object",
-              "content/tutorials/ui/ui-advanced",
-              "content/tutorials/ui/ui-design",
-              "content/tutorials/ui/notifier"
+              {
+                "group": "布局与组件",
+                "pages": [
+                  "content/tutorials/ui/animation",
+                  "content/tutorials/ui/drag-object",
+                  "content/tutorials/ui/dynamic-layout",
+                  "content/tutorials/ui/listview",
+                  "content/tutorials/ui/listview-custom",
+                  "content/tutorials/ui/long-page",
+                  "content/tutorials/ui/navigation",
+                  "content/tutorials/ui/scroll-layout",
+                  "content/tutorials/ui/ui-advanced",
+                  "content/tutorials/ui/ui-design"
+                ]
+              },
+              {
+                "group": "通知与反馈",
+                "pages": [
+                  "content/tutorials/ui/notifier"
+                ]
+              }
             ]
           },
           {
             "group": "数据处理",
             "pages": [
-              "content/tutorials/data/json",
-              "content/tutorials/data/dictionary",
-              "content/tutorials/data/string-operations",
-              "content/tutorials/data/math",
-              "content/tutorials/data/number-conversion",
-              "content/tutorials/data/timestamp",
-              "content/tutorials/data/encryption",
-              "content/tutorials/data/data-storage",
-              "content/tutorials/data/tinywebdb",
-              "content/tutorials/data/sqlite",
-              "content/tutorials/data/firebase",
-              "content/tutorials/data/cloud-database"
+              {
+                "group": "云端数据库",
+                "pages": [
+                  "content/tutorials/clouddb-chat",
+                  "content/tutorials/data/cloud-database",
+                  "content/tutorials/data/data-storage",
+                  "content/tutorials/data/firebase",
+                  "content/tutorials/data/sqlite",
+                  "content/tutorials/data/tinywebdb",
+                  "content/tutorials/projects/clouddb-realtime-chat"
+                ]
+              },
+              {
+                "group": "本地数据处理",
+                "pages": [
+                  "content/tutorials/data/dictionary",
+                  "content/tutorials/data/encryption",
+                  "content/tutorials/data/json",
+                  "content/tutorials/data/math",
+                  "content/tutorials/data/number-conversion",
+                  "content/tutorials/data/string-operations",
+                  "content/tutorials/data/timestamp"
+                ]
+              }
             ]
           },
           {
             "group": "网络通信",
             "pages": [
-              "content/tutorials/network/network-communication",
-              "content/tutorials/network/upload-image-server",
-              "content/tutorials/network/upload-image",
-              "content/tutorials/network/upload-file-bluetooth",
-              "content/tutorials/network/realtime-data",
-              "content/tutorials/network/webview-advanced",
-              "content/tutorials/network/baidu-ai",
-              "content/tutorials/network/dashscope-ai",
-              "content/tutorials/network/ai-llm",
-              "content/tutorials/network/ai-ml",
-              "content/tutorials/network/ai-integration",
-              "content/tutorials/network/share-login"
+              {
+                "group": "AI与API",
+                "pages": [
+                  "content/tutorials/network/ai-integration",
+                  "content/tutorials/network/ai-llm",
+                  "content/tutorials/network/ai-ml",
+                  "content/tutorials/network/baidu-ai",
+                  "content/tutorials/network/dashscope-ai",
+                  "content/tutorials/network/network-communication",
+                  "content/tutorials/network/realtime-data",
+                  "content/tutorials/network/share-login",
+                  "content/tutorials/network/upload-file-bluetooth",
+                  "content/tutorials/network/upload-image",
+                  "content/tutorials/network/upload-image-server",
+                  "content/tutorials/network/webview-advanced"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "媒体娱乐",
+            "pages": [
+              {
+                "group": "图像处理",
+                "pages": [
+                  "content/tutorials/media/barcode",
+                  "content/tutorials/media/camera",
+                  "content/tutorials/media/image-processing",
+                  "content/tutorials/media/image-processing-advanced",
+                  "content/tutorials/media/image-scale",
+                  "content/tutorials/media/save-photo"
+                ]
+              },
+              {
+                "group": "音视频",
+                "pages": [
+                  "content/tutorials/media/audio",
+                  "content/tutorials/media/remote-audio",
+                  "content/tutorials/media/video-player",
+                  "content/tutorials/media/video-player-full"
+                ]
+              }
             ]
           },
           {
             "group": "硬件交互",
             "pages": [
-              "content/tutorials/hardware/bluetooth",
-              "content/tutorials/hardware/ble",
-              "content/tutorials/hardware/ble-nfc-voice",
-              "content/tutorials/hardware/serial",
-              "content/tutorials/hardware/serial-assistant",
-              "content/tutorials/hardware/usb-device",
-              "content/tutorials/hardware/sensor",
-              "content/tutorials/hardware/sensors",
-              "content/tutorials/hardware/sensor-advanced",
-              "content/tutorials/hardware/sensor-apps",
-              "content/tutorials/hardware/hardware-integration",
-              "content/tutorials/hardware/modbus-protocol",
-              "content/tutorials/hardware/can-protocol",
-              "content/tutorials/hardware/map-nfc-ble"
+              {
+                "group": "串口与协议",
+                "pages": [
+                  "content/tutorials/hardware/can-protocol",
+                  "content/tutorials/hardware/hardware-integration",
+                  "content/tutorials/hardware/modbus-protocol",
+                  "content/tutorials/hardware/serial",
+                  "content/tutorials/hardware/serial-assistant",
+                  "content/tutorials/hardware/usb-device"
+                ]
+              },
+              {
+                "group": "传感器应用",
+                "pages": [
+                  "content/tutorials/hardware/sensor",
+                  "content/tutorials/hardware/sensor-advanced",
+                  "content/tutorials/hardware/sensor-apps",
+                  "content/tutorials/hardware/sensors"
+                ]
+              },
+              {
+                "group": "蓝牙通信",
+                "pages": [
+                  "content/tutorials/hardware/ble",
+                  "content/tutorials/hardware/ble-nfc-voice",
+                  "content/tutorials/hardware/bluetooth",
+                  "content/tutorials/hardware/map-nfc-ble"
+                ]
+              }
             ]
           },
           {
-            "group": "媒体处理",
+            "group": "扩展开发",
             "pages": [
-              "content/tutorials/media/camera",
-              "content/tutorials/media/audio",
-              "content/tutorials/media/image-processing",
-              "content/tutorials/media/image-processing-advanced",
-              "content/tutorials/media/image-scale",
-              "content/tutorials/media/video-player",
-              "content/tutorials/media/video-player-full",
-              "content/tutorials/media/barcode",
-              "content/tutorials/media/save-photo",
-              "content/tutorials/media/remote-audio"
+              {
+                "group": "扩展使用",
+                "pages": [
+                  "content/tutorials/extensions/best-extensions",
+                  "content/tutorials/extensions/extension-problems"
+                ]
+              }
             ]
           },
           {
-            "group": "进阶功能",
+            "group": "高级进阶",
             "pages": [
-              "content/tutorials/advanced/dynamic-components",
-              "content/tutorials/advanced/dynamic-extension",
-              "content/tutorials/advanced/background-task",
-              "content/tutorials/advanced/background-timer",
-              "content/tutorials/advanced/clipboard",
-              "content/tutorials/advanced/file-operations",
-              "content/tutorials/advanced/file-manager",
-              "content/tutorials/advanced/file-search",
-              "content/tutorials/advanced/multi-language",
-              "content/tutorials/advanced/performance",
-              "content/tutorials/advanced/system-features",
-              "content/tutorials/advanced/push-notification",
-              "content/tutorials/advanced/iap",
-              "content/tutorials/advanced/ios-companion",
-              "content/tutorials/advanced/block-finder"
+              {
+                "group": "后台任务",
+                "pages": [
+                  "content/tutorials/advanced/background-task",
+                  "content/tutorials/advanced/background-timer"
+                ]
+              },
+              {
+                "group": "文件与剪贴板",
+                "pages": [
+                  "content/tutorials/advanced/block-finder",
+                  "content/tutorials/advanced/clipboard",
+                  "content/tutorials/advanced/file-manager",
+                  "content/tutorials/advanced/file-operations",
+                  "content/tutorials/advanced/file-search"
+                ]
+              },
+              {
+                "group": "系统与性能",
+                "pages": [
+                  "content/tutorials/advanced/dynamic-components",
+                  "content/tutorials/advanced/dynamic-extension",
+                  "content/tutorials/advanced/iap",
+                  "content/tutorials/advanced/ios-companion",
+                  "content/tutorials/advanced/multi-language",
+                  "content/tutorials/advanced/performance",
+                  "content/tutorials/advanced/push-notification",
+                  "content/tutorials/advanced/system-features"
+                ]
+              }
             ]
           },
           {
             "group": "游戏开发",
             "pages": [
+              "content/tutorials/games/billiard-game",
               "content/tutorials/games/game-dev",
               "content/tutorials/games/game-flipcard",
-              "content/tutorials/games/billiard-game",
               "content/tutorials/games/minigolf-game"
             ]
           },
           {
-            "group": "实战项目",
+            "group": "项目实战",
             "pages": [
-              "content/tutorials/projects/attendance-system",
-              "content/tutorials/projects/map",
-              "content/tutorials/projects/map-geofence",
-              "content/tutorials/projects/chart",
-              "content/tutorials/projects/echarts",
-              "content/tutorials/projects/random-advanced",
-              "content/tutorials/projects/datetime-phone",
-              "content/tutorials/clouddb-chat",
-              "content/tutorials/projects/clouddb-realtime-chat",
-              "content/tutorials/projects/wheres-my-car",
-              "content/tutorials/projects/webview-javascript"
-            ]
-          },
-          {
-            "group": "扩展",
-            "pages": [
-              "content/tutorials/extensions/best-extensions",
-              "content/tutorials/extensions/extension-problems"
+              {
+                "group": "地图应用",
+                "pages": [
+                  "content/tutorials/projects/map",
+                  "content/tutorials/projects/map-geofence"
+                ]
+              },
+              {
+                "group": "数据可视化",
+                "pages": [
+                  "content/tutorials/projects/chart",
+                  "content/tutorials/projects/echarts"
+                ]
+              },
+              {
+                "group": "综合案例",
+                "pages": [
+                  "content/index",
+                  "content/tutorials/overview",
+                  "content/tutorials/projects/attendance-system",
+                  "content/tutorials/projects/datetime-phone",
+                  "content/tutorials/projects/random-advanced",
+                  "content/tutorials/projects/webview-javascript",
+                  "content/tutorials/projects/wheres-my-car",
+                  "content/tutorials/reference/matrix-complete",
+                  "content/tutorials/reference/mit-sources-updates",
+                  "content/tutorials/webview-javascript"
+                ]
+              }
             ]
           },
           {
             "group": "故障排查",
             "pages": [
-              "content/tutorials/troubleshooting/compilation-error",
-              "content/tutorials/troubleshooting/error-codes",
+              "content/tutorials/getting-started/publish",
               "content/tutorials/troubleshooting/aab-apk-build",
-              "content/tutorials/troubleshooting/yacodeblocks",
               "content/tutorials/troubleshooting/advanced-features",
-              "content/tutorials/troubleshooting/compilation-error-full"
-            ]
-          },
-          {
-            "group": "参考资料",
-            "pages": [
-              "content/tutorials/reference/mit-sources-updates",
-              "content/tutorials/reference/matrix-complete"
+              "content/tutorials/troubleshooting/compilation-error",
+              "content/tutorials/troubleshooting/compilation-error-full",
+              "content/tutorials/troubleshooting/error-codes",
+              "content/tutorials/troubleshooting/yacodeblocks"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "官方社区",
-          "href": "https://community.appinventor.mit.edu",
-          "icon": "comments"
-        },
-        {
-          "anchor": "GitHub",
-          "href": "https://github.com/mit-cml/appinventor-sources",
-          "icon": "github"
-        }
-      ]
-    }
+    ]
   },
-  "logo": "/favicon.svg",
-  "background": {
-    "color": {
-      "dark": "#0d1117"
-    }
+  "colors": {
+    "primary": "#3b82f6",
+    "light": "#60a5fa",
+    "dark": "#2563eb"
   },
   "navbar": {
     "links": [
       {
-        "label": "官网",
-        "href": "https://www.fun123.cn"
+        "href": "https://www.fun123.cn/reference/",
+        "label": "📖 文档中心"
+      },
+      {
+        "href": "https://bbs.tsingfun.com/forum-147-1.html",
+        "label": "💬 社区交流"
+      },
+      {
+        "href": "https://www.fun123.cn/reference/extensions/",
+        "label": "🧩 扩展下载"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "开始使用",
-      "href": "https://ai2.appinventor.mit.edu"
+      "label": "🚀 AI探索之旅",
+      "href": "https://www.fun123.cn/"
     }
   },
   "footer": {
-    "socials": {
-      "github": "https://github.com/mit-cml/appinventor-sources",
-      "website": "https://www.fun123.cn"
+    "items": [
+      {
+        "title": "快速链接",
+        "items": [
+          {
+            "label": "🏠 官网首页",
+            "href": "https://www.fun123.cn"
+          },
+          {
+            "label": "📖 文档中心",
+            "href": "https://www.fun123.cn/reference/"
+          }
+        ]
+      },
+      {
+        "title": "资源",
+        "items": [
+          {
+            "label": "🧩 扩展下载",
+            "href": "https://www.fun123.cn/reference/extensions/"
+          },
+          {
+            "label": "💬 社区交流",
+            "href": "https://bbs.tsingfun.com/forum-147-1.html"
+          }
+        ]
+      },
+      {
+        "title": "关于",
+        "items": [
+          {
+            "label": "❓ 帮助中心",
+            "href": "https://www.fun123.cn/reference/"
+          },
+          {
+            "label": "📧 联系我们",
+            "href": "mailto:service@fun123.cn"
+          }
+        ]
+      },
+      {
+        "title": "关注我们",
+        "items": [
+          {
+            "label": "🌐 官网",
+            "href": "https://www.fun123.cn"
+          },
+          {
+            "label": "💻 GitHub",
+            "href": "https://github.com/fun123dotcn/LLMAI2Ext"
+          }
+        ]
+      }
+    ],
+    "copyright": "© 2026 App Inventor 2 中文网 | www.fun123.cn | 让每个人都能搭建自己的App"
+  },
+  "topbar": {
+    "announcement": {
+      "name": "📚 免责声明",
+      "message": "本文档由 AI 辅助探索性研究生成，内容仅供参考学习，实际使用请以官方文档为准。",
+      "dismissible": true
     }
   },
-  "url": "http://localhost:3333"
+  "description": "AI辅助探索性研究文档，内容仅供参考学习"
 }
