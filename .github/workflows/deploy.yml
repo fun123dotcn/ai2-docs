@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Build and Deploy
 
 on:
   push:
@@ -7,28 +7,25 @@ on:
       - 'content/**'
       - 'docs.json'
       - 'snippets/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -40,28 +37,17 @@ jobs:
           npx mintlify export
           unzip -q export.zip -d static_site
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: static-site
           path: static_site/
-          retention-days: 1
 
-      - name: Deploy to fun123dotcn.github.io
-        env:
-          GH_TOKEN: ${{ secrets.FUN123_GH_TOKEN }}
-        run: |
-          cd static_site
-          git init
-          git config user.name "ai2claw"
-          git config user.email "ai2claw@fun123.cn"
-          git add .
-          git commit -m "自动部署: $(date '+%Y-%m-%d %H:%M')"
-          git branch -M main
-          git remote add origin https://x-access-token:${GH_TOKEN}@github.com/fun123dotcn/fun123dotcn.github.io.git
-          git push -u origin main --force || echo "部署跳过（Token未配置）"
-
-      - name: Notify Success
-        run: |
-          echo "✅ 部署成功！"
-          echo "访问: https://fun123dotcn.github.io/"
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
