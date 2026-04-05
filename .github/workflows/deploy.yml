@@ -29,32 +29,23 @@ jobs:
         with:
           node-version: '20'
 
-      # 锁定精确版本，避免每次拉取最新导致兼容性问题
-      - name: Install Mintlify CLI (exact version)
-        run: npm install @mintlify/cli@4.2.6 --save-exact
+      - name: Install Mintlify CLI
+        run: npm install @mintlify/cli@4 --save-dev
 
-      # 直接调用本地二进制，不用 npx（npx 会重新下载）
       - name: Build Static Site
         run: |
-          ./node_modules/.bin/mintlify export
+          npx mintlify export
           unzip -q export.zip -d static_site
-          echo "Build output files:"
-          ls -la static_site/
 
-      # Mintlify 导出时无法配置 baseUrl，构建后修正所有 HTML 中的路径
+      # Mintlify 导出不支持 baseUrl，构建后修正所有 HTML 中的路径前缀
       - name: Fix Base URL for /ai2-docs/ subdirectory
         run: |
-          echo "Checking HTML files before fix..."
-          grep -l '_next' static_site/**/*.html 2>/dev/null | head -5
-          echo "Fixing paths..."
           find static_site -name "*.html" -exec sed -i 's|<base href="/">|<base href="/ai2-docs/">|g' {} \;
           find static_site -name "*.html" -exec sed -i 's|href="/_next/|href="/ai2-docs/_next/|g' {} \;
           find static_site -name "*.html" -exec sed -i 's|src="/_next/|src="/ai2-docs/_next/|g' {} \;
           find static_site -name "*.html" -exec sed -i 's|href="/content/|href="/ai2-docs/content/|g' {} \;
           find static_site -name "*.html" -exec sed -i 's|src="/content/|src="/ai2-docs/content/|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|href="/favicon|href="/ai2-docs/favicon|g' {} \;
-          echo "Done. Checking result..."
-          grep -c '/ai2-docs/_next' static_site/index.html || echo "No matches found"
+          echo "Base URL fixed"
 
       - uses: actions/upload-pages-artifact@v3
         with:
