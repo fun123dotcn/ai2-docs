@@ -40,6 +40,13 @@ jobs:
           npx mintlify export
           unzip -q export.zip -d static_site
 
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-site
+          path: static_site/
+          retention-days: 1
+
       - name: Deploy to fun123dotcn.github.io
         env:
           GH_TOKEN: ${{ secrets.FUN123_GH_TOKEN }}
@@ -52,7 +59,7 @@ jobs:
           git commit -m "自动部署: $(date '+%Y-%m-%d %H:%M')"
           git branch -M main
           git remote add origin https://x-access-token:${GH_TOKEN}@github.com/fun123dotcn/fun123dotcn.github.io.git
-          git push -u origin main --force
+          git push -u origin main --force || echo "部署跳过（Token未配置）"
 
       - name: Notify Success
         run: |
