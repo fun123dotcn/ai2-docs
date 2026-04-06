@@ -359,5 +359,17 @@
       "dismissible": true
     }
   },
-  "description": "AI辅助探索性研究文档，内容仅供参考学习"
+  "description": "AI辅助探索性研究文档，内容仅供参考学习",
+  "styling": {
+    "codeblocks": {
+      "light": "github-light",
+      "dark": "github-dark"
+    }
+  },
+  "background": {
+    "decoration": "gradient"
+  },
+  "fonts": {
+    "family": "Inter"
+  }
 }
