@@ -15,6 +15,7 @@
           {
             "group": "快速开始",
             "pages": [
+              "content/index",
               {
                 "group": "屏幕与多页面",
                 "pages": [
@@ -239,7 +240,6 @@
               {
                 "group": "综合案例",
                 "pages": [
-                  "content/index",
                   "content/tutorials/overview",
                   "content/tutorials/projects/attendance-system",
                   "content/tutorials/projects/datetime-phone",
