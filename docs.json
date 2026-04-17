@@ -15,6 +15,7 @@
           {
             "group": "快速开始",
             "pages": [
+              "content/index",
               {
                 "group": "屏幕与多页面",
                 "pages": [
