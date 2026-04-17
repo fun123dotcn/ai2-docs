@@ -38,20 +38,22 @@ jobs:
           unzip -q export.zip -d static_site
 
       # Mintlify 导出不支持 baseUrl，构建后修正所有 HTML 中的路径前缀
+      # 关键原则：静态资源（_next/logo/favicon）位于 GitHub Pages 根目录，不需要 /ai2-docs/ 前缀
+      #          内容页面（content）位于 /ai2-docs/content/ 目录下，需要 /ai2-docs/ 前缀
       - name: Fix Base URL for /ai2-docs/ subdirectory
         run: |
+          # 1. 修正 <base> 标签
           find static_site -name "*.html" -exec sed -i 's|<base href="/">|<base href="/ai2-docs/">|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|href="/_next/|href="/ai2-docs/_next/|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|src="/_next/|src="/ai2-docs/_next/|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|href="/content/|href="/ai2-docs/content/|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|src="/content/|src="/ai2-docs/content/|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|href="/logo.png"|href="/ai2-docs/logo.png"|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|src="/logo.png"|src="/ai2-docs/logo.png"|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|href="/favicons/|href="/ai2-docs/favicons/|g' {} \;
-          find static_site -name "*.html" -exec sed -i 's|href="/sitemap.xml"|href="/ai2-docs/sitemap.xml"|g' {} \;
+
+          # 2. 修正内容页面路径（content 在 /ai2-docs/ 目录下）
           find static_site -name "*.html" -exec sed -i 's|href="/content"|href="/ai2-docs/content"|g' {} \;
           find static_site -name "*.html" -exec sed -i 's|href="/content/"|href="/ai2-docs/content/"|g' {} \;
-          echo "Base URL fixed"
+          find static_site -name "*.html" -exec sed -i 's|src="/content/|src="/ai2-docs/content/|g' {} \;
+
+          # 3. 修正 sitemap（sitemap.xml 实际在 /ai2-docs/ 目录下）
+          find static_site -name "*.html" -exec sed -i 's|href="/sitemap.xml"|href="/ai2-docs/sitemap.xml"|g' {} \;
+
+          echo "Base URL fixed - only content paths prefixed with /ai2-docs/"
 
       - uses: actions/upload-pages-artifact@v3
         with:
