@@ -72,7 +72,6 @@ ai2-docs/
 ## 🔗 相关链接
 
 - [MIT App Inventor](https://appinventor.mit.edu/)
-- [AI2 在线编辑器](https://ai2.appinventor.mit.edu/)
 - [MIT App Inventor 社区](https://community.appinventor.mit.edu/)
 - [官方扩展列表](https://mit-cml.github.io/extensions/)
 - [Mintlify 文档](https://mintlify.com/docs)
