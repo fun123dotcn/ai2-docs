@@ -1,0 +1,299 @@
+---
+title: App Inventor 接收 JPEG 数据流教程
+description: "使用 App Inventor 接收 ESP32-CAM、IP 摄像头的 JPEG 数据流，实现实时视频显示。涵盖 WebViewer MJPEG、Timer 轮询等方案。"
+---
+
+
+# App Inventor 接收 JPEG 数据流教程
+
+> 在 App Inventor 中接收 JPEG 数据流（如 ESP32-CAM、IP 摄像头），将其显示为实时视频画面。
+
+---
+
+## 一、四种方案对比
+
+| 方案 | 实现难度 | 延迟 | 适用场景 | 缺点 |
+|------|---------|------|----------|------|
+| **1. WebViewer 直接加载 MJPEG URL** | ⭐ 最简单 | 低 | MJPG-streamer、IP 摄像头 | 依赖浏览器内核兼容性 |
+| **2. Image + Timer 轮询刷新** | ⭐⭐ 简单 | 中高 | 单帧 JPEG URL、ESP32-CAM | 频繁重建连接，效率低 |
+| **3. Web 组件 + Canvas 自定义绘制** | ⭐⭐⭐ 中等 | 低 | 需要自定义处理 | 需要 JavaScript 注入 |
+| **4. 第三方扩展** | ⭐⭐ 简单 | 低 | 专业视频应用 | 需要找支持的扩展 |
+
+---
+
+## 二、方案 1：WebViewer 直接加载 MJPEG URL（推荐）
+
+### 2.1 原理
+
+MJPEG（Motion JPEG）本质是服务器通过 HTTP 长连接连续发送 JPEG 帧，浏览器自动渲染成视频。
+
+协议格式如下：
+
+```
+HTTP/1.1 200 OK
+Content-Type: multipart/x-mixed-replace; boundary=frame
+
+--frame
+Content-Type: image/jpeg
+Content-Length: <字节数>
+
+<二进制 JPEG 数据>
+--frame
+Content-Type: image/jpeg
+Content-Length: <字节数>
+
+<二进制 JPEG 数据>
+...
+```
+
+### 2.2 适用场景
+
+- ESP32-CAM 的 MJPG-streamer
+- IP 摄像头的 MJPEG 接口
+- 任何提供 `multipart/x-mixed-replace` 流的服务器
+
+### 2.3 App Inventor 实现
+
+**组件设计：**
+
+| 组件 | 类型 | 用途 |
+|------|------|------|
+| WebViewer1 | WebViewer | 显示视频流 |
+| Timer1 | Timer | 可选，用于状态检测 |
+
+**属性设置：**
+
+- `WebViewer1.HomeURL`：`http://192.168.4.1/stream`
+- `WebViewer1.EnableJavaScript`：`True`
+
+**积木逻辑：**
+
+```
+当 Screen1 初始化时:
+  设置 WebViewer1.Url 为 "http://192.168.4.1/stream"
+```
+
+> **就这么简单！** WebViewer 内置的浏览器内核会自动解析 MJPEG 流并逐帧渲染，不需要额外的代码。
+
+### 2.4 注意事项
+
+1. **WiFi 直连模式**：ESP32 作为热点时，手机连接热点后 IP 为 `192.168.4.1`
+2. **局域网模式**：ESP32 连接路由器时，需要查看 ESP32 的局域网 IP（串口打印或路由器管理页面）
+3. **分辨率优化**：推荐 VGA (640×480) 或 QVGA (320×240) 保证流畅度
+4. **JPEG 质量**：10-15 质量值可平衡画质与传输速度
+
+---
+
+## 三、方案 2：Image + Timer 轮询刷新
+
+### 3.1 原理
+
+服务器提供单帧 JPEG API（如 `/capture`），App 用 Timer 定时请求新帧并更新 Image 组件。
+
+### 3.2 适用场景
+
+- 服务器只支持单帧 JPEG 响应
+- 需要 HTTP POST 触发拍照
+- 对延迟不敏感的场景
+
+### 3.3 App Inventor 实现
+
+**组件设计：**
+
+| 组件 | 类型 | 用途 |
+|------|------|------|
+| Image1 | Image | 显示图像 |
+| Web1 | Web | HTTP 请求 |
+| Timer1 | Timer | 定时刷新 |
+| Button_Refresh | Button | 手动刷新 |
+
+**积木逻辑：**
+
+```
+当 Timer1 计时器触发时:
+  设置 Web1.Url 为 "http://192.168.4.1/capture?_t=" + 当前时间毫秒
+  调用 Web1.DownloadFile
+
+当 Web1 得到文件时:
+  设置 Image1.Picture 为 下载文件路径
+```
+
+### 3.4 缺点
+
+- 每帧都建立新 HTTP 连接，效率低
+- 延迟取决于 Timer 间隔（建议 100ms ~ 500ms）
+- Image.Picture 更新可能有闪烁
+
+---
+
+## 四、方案 3：Web + Canvas 自定义绘制（进阶）
+
+### 4.1 原理
+
+使用 JavaScript 在 WebView 中获取图像数据，通过 Canvas 绘制实现自定义处理。
+
+### 4.2 实现思路
+
+1. WebViewer 加载自定义 HTML 页面
+2. HTML 页面用 JavaScript 获取 MJPEG 流
+3. 通过 WebViewBridge 回调传递数据给 App
+
+### 4.3 适用场景
+
+- 需要对图像进行预处理（裁剪、滤镜等）
+- 需要在图像上叠加信息（文字标注、坐标等）
+- 专业视频应用
+
+---
+
+## 五、方案 4：第三方扩展
+
+### 5.1 已知可能的扩展
+
+| 扩展 | 功能 |
+|------|------|
+| Taifun Image Extension | 动态图片处理 |
+| Multi-Touch Canvas | Canvas 增强 |
+| Video Client Extension | 视频流扩展（如果有） |
+
+### 5.2 寻找更多扩展
+
+- Pura Vida Apps: [https://puravidaapps.com](https://puravidaapps.com)
+- MIT Extensions: 官方扩展列表
+- GitHub 搜索: "appinventor extension camera"
+
+---
+
+## 六、实战案例：ESP32-CAM 视频小车
+
+### 6.1 硬件配置
+
+| 硬件 | 型号/说明 |
+|------|----------|
+| 主控 | ESP32-CAM 模块 |
+| 摄像头 | OV2640 |
+| 电机驱动 | L298N |
+| 电源 | 7.4V 锂电池 + 5V 稳压 |
+
+### 6.2 ESP32-CAM 关键代码
+
+```cpp
+// 摄像头配置
+sensor_t *s = esp_camera_sensor_get();
+s->set_framesize(s, FRAMESIZE_VGA);  // 640x480
+s->set_quality(s, 10);               // JPEG 质量
+s->set_fb_count(s, 2);               // 双缓冲提升帧率
+
+// WiFi 热点模式
+WiFi.softAP("ESP32-CAR", "12345678");
+// 热点 IP: 192.168.4.1
+
+// MJPEG 流式传输
+void handleStream() {
+  WiFiClient client = server.client();
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: multipart/x-mixed-replace; boundary=frame");
+  client.println();
+
+  while (client.connected()) {
+    camera_fb_t * fb = esp_camera_fb_get();
+    client.println("--frame");
+    client.println("Content-Type: image/jpeg");
+    client.print("Content-Length: ");
+    client.println(fb->len);
+    client.println();
+    client.write(fb->buf, fb->len);
+    client.println();
+    esp_camera_fb_return(fb);
+    delay(30); // 控制帧率 ≈ 30 FPS
+  }
+}
+```
+
+### 6.3 App 端关键设置
+
+```
+WebViewer1.HomeURL = "http://192.168.4.1/stream"
+```
+
+> **就这么一行！** 连接 ESP32-CAM 热点后，WebViewer 直接加载流地址即可看到实时画面。
+
+---
+
+## 七、Python MJPEG 流服务器示例
+
+如果需要在电脑上测试，可以用 Python 快速搭建一个 MJPEG 流服务器：
+
+```python
+import cv2
+import socket
+import time
+import struct
+
+def mjpeg_stream_server(host='0.0.0.0', port=8080):
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((host, port))
+    server.listen(1)
+    print(f"MJPEG 流服务器启动: http://{host}:{port}/stream")
+
+    while True:
+        client, addr = server.accept()
+        # 发送 HTTP 响应头
+        client.sendall(b"HTTP/1.1 200 OK\r\n"
+                       b"Content-Type: multipart/x-mixed-replace; boundary=frame\r\n\r\n")
+        cap = cv2.VideoCapture(0)
+        try:
+            while client connected():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                _, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+                frame_data = jpeg.tobytes()
+                client.sendall(
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n"
+                    f"Content-Length: {len(frame_data)}\r\n\r\n".encode()
+                    + frame_data + b"\r\n"
+                )
+                time.sleep(0.033)  # ≈ 30 FPS
+        finally:
+            cap.release()
+            client.close()
+```
+
+---
+
+## 八、方案选择建议
+
+| 场景 | 推荐方案 |
+|------|---------|
+| ESP32-CAM 视频小车 | **方案 1** WebViewer（最简单，效果最好） |
+| IP 摄像头监控 | **方案 1** WebViewer（大多数 IP 摄像头支持 MJPEG） |
+| 单帧拍照 + 云端 | **方案 2** Timer 轮询（如巴法云方案） |
+| 需要图像预处理 | **方案 3** Web + Canvas |
+| 高质量视频流 | 第三方扩展或原生开发（App Inventor 有限制） |
+
+> **总结**：如果数据源支持 MJPEG 流式传输，**方案 1（WebViewer 直接加载）** 是最简单有效的方案。如果不支持 MJPEG，则用 Timer 轮询单帧 JPEG。
+
+---
+
+## 参考资源
+
+- ESP32-CAM 视频小车教程: [cnblogs.com/54programer](https://www.cnblogs.com/54programer/p/19714309)
+- 巴法云图云: [cloud.bemfa.com](https://cloud.bemfa.com/tcp/images.html)
+- MJPG-streamer: [GitHub](https://github.com/jacksonliam/mjpg-streamer)
+- Pura Vida Apps 扩展库: [puravidaapps.com](https://puravidaapps.com)
+
+---
+
+## 参考资料与版权声明
+
+### 原文来源
+- ESP32-CAM 视频小车教程 - [cnblogs.com/54programer](https://www.cnblogs.com/54programer/p/19714309)
+- MJPG-streamer - [GitHub](https://github.com/jacksonliam/mjpg-streamer)
+- 巴法云图云 - [cloud.bemfa.com](https://cloud.bemfa.com/tcp/images.html)
+
+### 版权声明
+本文档由 ai2claw 🐝 基于公开技术资料整理编写，仅供参考学习。
+ESP32-CAM 相关代码遵循 Arduino/ESP-IDF 开源协议。
+如有任何版权问题，请联系 [service@fun123.cn](mailto:service@fun123.cn) 删除。

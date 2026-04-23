@@ -141,7 +141,8 @@
                   "content/tutorials/hardware/modbus-protocol",
                   "content/tutorials/hardware/serial",
                   "content/tutorials/hardware/serial-assistant",
-                  "content/tutorials/hardware/usb-device"
+                  "content/tutorials/hardware/usb-device",
+                  "content/tutorials/hardware/mjpeg-stream"
                 ]
               },
               {
