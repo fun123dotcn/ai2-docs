@@ -51,6 +51,11 @@ jobs:
           find static_site -name "*.html" -exec sed -i 's|href="/sitemap.xml"|href="/ai2-docs/sitemap.xml"|g' {} \;
           echo "Base URL fixed"
 
+      - name: Run Pagefind & Inject Search UI
+        run: |
+          chmod +x scripts/inject-pagefind.sh
+          bash scripts/inject-pagefind.sh static_site
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: static_site/
