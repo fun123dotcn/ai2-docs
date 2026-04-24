@@ -116,7 +116,8 @@
                   "content/tutorials/media/image-processing",
                   "content/tutorials/media/image-processing-advanced",
                   "content/tutorials/media/image-scale",
-                  "content/tutorials/media/save-photo"
+                  "content/tutorials/media/save-photo",
+                  "content/tutorials/media/image-picker-multi-select"
                 ]
               },
               {
