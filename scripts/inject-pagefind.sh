@@ -75,13 +75,43 @@ div[role="dialog"], [data-radix-popper-content-wrapper] { display: none !importa
 INJECT_SCRIPT = """<script>
 (function(){
   window.__pfOpen = false;
+  function ensureOverlay() {
+    var o = document.getElementById("pf-overlay");
+    if (!o) {
+      o = document.createElement("div");
+      o.id = "pf-overlay";
+      o.style.cssText = "display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);align-items:flex-start;justify-content:center;padding-top:15vh";
+      var bx = document.createElement("div");
+      bx.style.cssText = "background:white;border-radius:12px;width:90%;max-width:580px;max-height:60vh;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)";
+      bx.id = "pf-container";
+      o.appendChild(bx);
+      document.body.appendChild(o);
+      o.addEventListener("click", function(e) { if (e.target === o) closeSearch(); });
+      var link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "/pagefind/pagefind-ui.css";
+      document.head.appendChild(link);
+      var scr = document.createElement("script");
+      scr.src = "/pagefind/pagefind-ui.js";
+      scr.onload = function() {
+        try { new PagefindUI({ element: "#pf-container", showImages: false }); } catch(e) {}
+      };
+      document.body.appendChild(scr);
+    }
+    return o;
+  }
   function openSearch() {
     window.__pfOpen = true;
-    var o = document.getElementById("pf-overlay");
-    if (o) {
-      o.style.display = "flex";
-      var i = o.querySelector("input");
-      if (i) setTimeout(function(){ i.focus(); }, 150);
+    var o = ensureOverlay();
+    o.style.display = "flex";
+    var i = o.querySelector("input");
+    if (i) setTimeout(function(){ i.focus(); }, 150);
+    else {
+      /* Pagefind not loaded yet - wait for it */
+      var wait = setInterval(function() {
+        var inp = document.querySelector("#pf-container input");
+        if (inp) { clearInterval(wait); inp.focus(); }
+      }, 200);
     }
   }
   function closeSearch() {
@@ -162,13 +192,20 @@ INJECT_SCRIPT = """<script>
       if (link && !link.nextElementSibling?.classList?.contains("nav-subtitle")) {
         var sub = document.createElement("span");
         sub.className = "nav-subtitle";
-        sub.textContent = "AI\u8F85\u52A9\u7F16\u7A0B\u7814\u7A76";
+        sub.textContent = "AI辅助编程研究";
         link.parentNode.insertBefore(sub, link.nextSibling);
       }
     });
   }
-  addSubtitle();
-  setInterval(addSubtitle, 3000);
+  /* Wait for React hydration before adding subtitle */
+  window.addEventListener('load', function() {
+    setTimeout(addSubtitle, 500);
+    setInterval(addSubtitle, 3000);
+  });
+  if (document.readyState === 'complete') {
+    setTimeout(addSubtitle, 500);
+    setInterval(addSubtitle, 3000);
+  }
   /* Sidebar "文档中心" tab → navigate to root */
   function hijackSidebarTab() {
     document.querySelectorAll('nav button, nav a, [role="tablist"] button, [role="tablist"] a').forEach(function(el) {
