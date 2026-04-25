@@ -4,7 +4,7 @@
   "logo": {
     "light": "/logo.png",
     "dark": "/logo.png",
-    "href": "https://www.fun123.cn"
+    "href": "/"
   },
   "favicon": "/favicon.ico",
   "navigation": {
@@ -280,7 +280,7 @@
   "navbar": {
     "links": [
       {
-        "href": "https://www.fun123.cn/reference/",
+        "href": "/",
         "label": "📖 文档中心"
       },
       {
